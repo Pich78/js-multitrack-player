@@ -20,7 +20,7 @@ class MultiTrackPlayer extends EventTarget {
     _bpm = 120;
     _timeSignatureNumerator = 4;
     _timeSignatureDenominator = 4;
-    _subdivision = 4; // e.g., 4 for 16th notes (4 16ths per beat)
+    _subdivisionNoteValue = 16; // e.g., 4 for quarter, 8 for eighth, 16 for sixteenth, 32 for thirty-second
     _loop = true;
 
     _isPlaying = false;
@@ -53,23 +53,35 @@ class MultiTrackPlayer extends EventTarget {
 
     /**
      * Calculates the duration of a single grid cell in seconds.
-     * Based on BPM, time signature, and subdivision.
+     * Based on BPM and the subdivision note value.
      * @returns {number} The duration of one cell in seconds.
      * @private
      */
     _calculateCellDuration() {
-        const beatsPerSecond = this._bpm / 60;
-        const secondsPerBeat = 1 / beatsPerSecond;
+        // A whole note at 60 BPM is 4 seconds.
+        // So, a whole note at X BPM is (60 / X) * 4 seconds, or 240 / X seconds.
+        const secondsPerWholeNote = 240 / this._bpm;
+        // The duration of one cell is the duration of a whole note divided by its note value.
+        return secondsPerWholeNote / this._subdivisionNoteValue;
+    }
 
-        // How many of our 'subdivisions' fit into one beat
-        // If subdivision is 4 (16th notes) and time signature is 4/4:
-        // A beat is a quarter note. 4 16th notes fit in a quarter note.
-        // So, 16th note duration = secondsPerBeat / 4
-        // If subdivision is 2 (8th notes) and time signature is 4/4:
-        // A beat is a quarter note. 2 8th notes fit in a quarter note.
-        // So, 8th note duration = secondsPerBeat / 2
-        const subdivisionPerBeat = this._subdivision; // e.g., 4 for 16th notes per beat
-        return secondsPerBeat / subdivisionPerBeat;
+    /**
+     * Determines the total number of columns (cells) in one measure based on
+     * time signature and the subdivision note value.
+     * @returns {number} The total number of columns in a measure.
+     * @private
+     */
+    _getMaxColumns() {
+        // Calculate the total number of 'subdivisionNoteValue' notes that fit into one measure.
+        // Example: 4/4 time, 16th note subdivision (value 16)
+        // Numerator = 4, Denominator = 4, SubdivisionNoteValue = 16
+        // Total 16th notes in a measure = Numerator * (SubdivisionNoteValue / Denominator)
+        // = 4 * (16 / 4) = 4 * 4 = 16 columns.
+        // Example: 6/8 time, 16th note subdivision (value 16)
+        // Numerator = 6, Denominator = 8, SubdivisionNoteValue = 16
+        // Total 16th notes in a measure = 6 * (16 / 8) = 6 * 2 = 12 columns.
+        const totalSubdivisionNotesInMeasure = this._timeSignatureNumerator * (this._subdivisionNoteValue / this._timeSignatureDenominator);
+        return totalSubdivisionNotesInMeasure;
     }
 
     /**
@@ -153,23 +165,6 @@ class MultiTrackPlayer extends EventTarget {
 
             this._nextCellTime += cellDuration;
         }
-    }
-
-    /**
-     * Determines the maximum number of columns across all tracks.
-     * @returns {number} The maximum column index + 1. Returns 0 if no tracks or no audio.
-     * @private
-     */
-    _getMaxColumns() {
-        let max = 0;
-        this._tracks.forEach(track => {
-            track.cells.forEach((buffer, colIndex) => {
-                if (colIndex >= max) {
-                    max = colIndex + 1; // +1 because index is 0-based
-                }
-            });
-        });
-        return max;
     }
 
     /**
@@ -292,20 +287,20 @@ class MultiTrackPlayer extends EventTarget {
     }
 
     /**
-     * Sets the subdivision for each grid cell.
-     * @param {number} subdivision - E.g., 1 for quarter notes, 2 for eighths, 4 for sixteenths.
+     * Sets the subdivision note value for each grid cell.
+     * @param {number} subdivisionNoteValue - E.g., 4 for quarter notes, 8 for eighths, 16 for sixteenths, 32 for thirty-seconds.
      */
-    setSubdivision(subdivision) {
+    setSubdivisionNoteValue(subdivisionNoteValue) {
         if (this._isPlaying || this._isPaused) {
             console.warn("Cannot change subdivision while playing or paused. Please stop the player first.");
             return;
         }
-        if (subdivision <= 0) {
-            console.error("Subdivision must be a positive number.");
+        if (![4, 8, 16, 32].includes(subdivisionNoteValue)) {
+            console.error("Subdivision note value must be 4, 8, 16, or 32.");
             return;
         }
-        this._subdivision = subdivision;
-        this.dispatchEvent(new CustomEvent('subdivisionChanged', { detail: { subdivision: this._subdivision } }));
+        this._subdivisionNoteValue = subdivisionNoteValue;
+        this.dispatchEvent(new CustomEvent('subdivisionChanged', { detail: { subdivisionNoteValue: this._subdivisionNoteValue } }));
     }
 
     /**
@@ -445,11 +440,11 @@ class MultiTrackPlayer extends EventTarget {
     }
 
     /**
-     * Gets the current subdivision.
+     * Gets the current subdivision note value.
      * @returns {number}
      */
-    getSubdivision() {
-        return this._subdivision;
+    getSubdivisionNoteValue() {
+        return this._subdivisionNoteValue;
     }
 
     /**

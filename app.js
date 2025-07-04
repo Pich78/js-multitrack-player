@@ -3,6 +3,7 @@
 let audioContext;
 let player;
 let audioFiles = {}; // Stores decoded AudioBuffers by their simplified name (e.g., 'itotele-open')
+let selectedSoundType = null; // 'open' or 'slap'
 
 // Expected file names (without .wav extension)
 const EXPECTED_FILE_NAMES = [
@@ -12,35 +13,8 @@ const EXPECTED_FILE_NAMES = [
 
 const trackOrder = ['okonkolo', 'itotele', 'iya']; // Order for displaying tracks
 
-// Initial grid data will now map to keys in the audioFiles object
-const initialGridData = {
-    'okonkolo': {
-        0: 'okonkolo-open',
-        4: 'okonkolo-open',
-        8: 'okonkolo-open',
-        12: 'okonkolo-open',
-        2: 'okonkolo-slap',
-        6: 'okonkolo-slap',
-        10: 'okonkolo-slap',
-        14: 'okonkolo-slap',
-    },
-    'itotele': {
-        2: 'itotele-open',
-        6: 'itotele-open',
-        10: 'itotele-open',
-        14: 'itotele-open',
-        0: 'itotele-slap',
-        4: 'itotele-slap',
-        8: 'itotele-slap',
-        12: 'itotele-slap',
-    },
-    'iya': {
-        0: 'iya-open',
-        8: 'iya-open',
-        4: 'iya-slap',
-        12: 'iya-slap',
-    }
-};
+// Initial grid data will be empty now, filled by user interaction
+let currentGridState = new Map(); // Map<trackId, Map<columnIndex, soundType>>
 
 const ui = {
     audioFileInput: document.getElementById('audio-file-input'),
@@ -54,7 +28,16 @@ const ui = {
     masterVolumeSlider: document.getElementById('master-volume-slider'),
     masterVolumeValue: document.getElementById('master-volume-value'),
     loopToggle: document.getElementById('loop-toggle'),
-    gridContainer: document.getElementById('grid-container')
+    gridContainer: document.getElementById('grid-container'),
+
+    // New UI elements for grid settings
+    timeNumeratorInput: document.getElementById('time-numerator'),
+    timeDenominatorInput: document.getElementById('time-denominator'),
+    subdivisionSelector: document.getElementById('subdivision-selector'),
+    applyGridSettingsBtn: document.getElementById('apply-grid-settings-btn'),
+
+    // New UI elements for sound selection
+    soundSymbols: document.querySelectorAll('.sound-symbol')
 };
 
 // --- Audio Loading Functions ---
@@ -105,8 +88,11 @@ async function handleFileSelection() {
         ui.playBtn.disabled = true;
     } else if (loadedCount === EXPECTED_FILE_NAMES.length) {
         ui.loadingStatus.textContent = 'All WAV files loaded successfully! Ready for playback.';
-        initializePlayerWithGrid(); // Initialize/re-initialize player with new grid
-        ui.playBtn.disabled = false; // Enable play button
+        // Don't call initializePlayerWithGrid here directly, wait for applyGridSettings
+        // Just enable controls that depend on files being loaded
+        updateUIControls();
+        console.log('Player initialized. All audio files loaded.');
+        // The grid will be rendered when Apply Grid Settings is clicked
     } else {
         ui.loadingStatus.textContent = `Loaded ${loadedCount}/${EXPECTED_FILE_NAMES.length} files. Please try again.`;
         ui.playBtn.disabled = true;
@@ -120,25 +106,36 @@ async function handleFileSelection() {
 function renderGrid() {
     ui.gridContainer.innerHTML = ''; // Clear existing grid
 
-    // Determine max columns for grid layout
-    let maxCols = 0;
-    player.getTracks().forEach(track => {
-        track.cells.forEach((buffer, colIndex) => {
-            if (colIndex >= maxCols) {
-                maxCols = colIndex + 1;
-            }
-        });
-    });
-    const numberOfColumns = maxCols > 0 ? maxCols : 16; // Default to 16 if no audio yet
+    // Get current grid settings from UI
+    const timeNumerator = parseInt(ui.timeNumeratorInput.value, 10);
+    const timeDenominator = parseInt(ui.timeDenominatorInput.value, 10);
+    const subdivisionNoteValue = parseInt(ui.subdivisionSelector.value, 10);
 
-    // No header row with column numbers or labels needed anymore.
-    // The grid will start directly with track labels and cells.
+    // Update player with current settings (should be in stop state)
+    player.setTimeSignature(timeNumerator, timeDenominator);
+    player.setSubdivisionNoteValue(subdivisionNoteValue);
+
+    const numberOfColumns = player._getMaxColumns(); // Get calculated columns from player
+
+    // Initialize currentGridState for new grid dimensions
+    // Preserve existing placements if the grid size allows
+    const newGridState = new Map();
+    trackOrder.forEach(trackId => {
+        newGridState.set(trackId, new Map());
+        if (currentGridState.has(trackId)) {
+            const oldTrackCells = currentGridState.get(trackId);
+            for (let i = 0; i < numberOfColumns; i++) {
+                if (oldTrackCells.has(i)) {
+                    newGridState.get(trackId).set(i, oldTrackCells.get(i));
+                }
+            }
+        }
+    });
+    currentGridState = newGridState;
+
 
     // Render tracks
     trackOrder.forEach(trackId => {
-        const trackData = player.getTracks().get(trackId);
-        if (!trackData) return; // Skip if track not added
-
         const rowElement = document.createElement('div');
         rowElement.classList.add('grid-row');
         // Grid layout: first column for track label, then cells, then volume control
@@ -155,15 +152,17 @@ function renderGrid() {
             cellElement.dataset.trackId = trackId;
             cellElement.dataset.columnIndex = i;
 
-            if (trackData.cells.has(i)) {
-                const audioBuffer = trackData.cells.get(i);
-                // Find the key in audioFiles map that matches this audioBuffer
-                const fileName = Object.keys(audioFiles).find(key => audioFiles[key] === audioBuffer);
-                cellElement.textContent = fileName ? fileName.replace('-', ' ') : 'Sound';
+            const soundTypeInCell = currentGridState.get(trackId)?.get(i);
+            if (soundTypeInCell) {
                 cellElement.classList.add('filled');
+                // Add symbol based on soundTypeInCell
+                const symbolDiv = document.createElement('div');
+                symbolDiv.classList.add('cell-symbol', soundTypeInCell); // Add 'open' or 'slap' class
+                cellElement.appendChild(symbolDiv);
             } else {
                 cellElement.textContent = '';
             }
+            cellElement.addEventListener('click', handleGridCellClick);
             rowElement.appendChild(cellElement);
         }
 
@@ -177,8 +176,8 @@ function renderGrid() {
         volSlider.min = '0';
         volSlider.max = '100';
         // Get current track volume from player and convert to slider value
-        const currentTrackVolume = player.getTracks().get(trackId).gainNode.gain.value;
-        volSlider.value = Math.round(currentTrackVolume * 100);
+        const currentTrackVolume = player.getTracks().get(trackId)?.gainNode?.gain?.value;
+        volSlider.value = Math.round((currentTrackVolume !== undefined ? currentTrackVolume : 1.0) * 100); // Default to 1.0 if not set
         volSlider.dataset.trackId = trackId;
         volSlider.addEventListener('input', (e) => {
             const vol = parseFloat(e.target.value) / 100;
@@ -189,16 +188,57 @@ function renderGrid() {
 
         ui.gridContainer.appendChild(rowElement);
     });
+
+    // Remove placeholder text if present
+    const placeholder = ui.gridContainer.querySelector('.placeholder-text');
+    if (placeholder) {
+        placeholder.remove();
+    }
+    updatePlayerGridData(); // Update the player component with the new grid state
+    updateUIControls();
+}
+
+// Update the actual player component's grid data based on currentGridState
+function updatePlayerGridData() {
+    player.stop(); // Stop player before updating grid data
+
+    // Clear all existing audio from player
+    player.getTracks().forEach(track => {
+        track.cells.clear();
+    });
+
+    // Add audio to player based on currentGridState
+    currentGridState.forEach((trackCells, trackId) => {
+        trackCells.forEach((soundType, columnIndex) => {
+            const audioKey = `${trackId}-${soundType}`; // e.g., 'okonkolo-open'
+            const audioBuffer = audioFiles[audioKey];
+            if (audioBuffer) {
+                player.addAudioToGrid(trackId, columnIndex, audioBuffer);
+            } else {
+                console.warn(`Audio buffer for ${audioKey} not found. Cannot place sound.`);
+            }
+        });
+    });
 }
 
 
-// --- Player Initialization and Grid Setup ---
+// --- Player Initialization ---
 function initializePlayer() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     player = new MultiTrackPlayer(audioContext);
 
     // Set BPM slider min value here
     ui.bpmSlider.min = 30; // Set minimum BPM to 30
+
+    // Set initial grid settings in UI
+    ui.timeNumeratorInput.value = player.getTimeSignature().numerator;
+    ui.timeDenominatorInput.value = player.getTimeSignature().denominator;
+    ui.subdivisionSelector.value = player.getSubdivisionNoteValue();
+
+    // Add initial tracks to the player (these are always present)
+    trackOrder.forEach(trackId => {
+        player.addTrack(trackId);
+    });
 
     // Initial UI updates
     updateUIControls();
@@ -227,39 +267,8 @@ function initializePlayer() {
         ui.loopToggle.checked = e.detail.loop;
     });
 
-    console.log('MultiTrackPlayer initialized. Waiting for audio files.');
+    console.log('MultiTrackPlayer initialized. Waiting for audio files and grid settings.');
 }
-
-function initializePlayerWithGrid() {
-    // Clear previous grid data if any, useful if files are reloaded
-    player.stop(); // Ensure player is stopped before reconfiguring
-    player.getTracks().forEach((_, trackId) => player.removeTrack(trackId)); // Remove all existing tracks
-
-    // Setup initial tracks and grid data with loaded audio buffers
-    trackOrder.forEach(trackId => {
-        player.addTrack(trackId);
-        const trackData = initialGridData[trackId];
-        if (trackData) {
-            for (const colIndex in trackData) {
-                const audioKey = trackData[colIndex];
-                if (audioFiles[audioKey]) {
-                    player.addAudioToGrid(trackId, parseInt(colIndex), audioFiles[audioKey]);
-                } else {
-                    console.warn(`Audio file ${audioKey}.wav not found in loaded files for track ${trackId} at column ${colIndex}`);
-                }
-            }
-        }
-    });
-    // Remove placeholder text if present
-    const placeholder = ui.gridContainer.querySelector('.placeholder-text');
-    if (placeholder) {
-        placeholder.remove();
-    }
-    renderGrid(); // Render grid with loaded files
-    updateUIControls();
-    console.log('Player configured with initial grid data.');
-}
-
 
 // --- UI Interaction and Updates ---
 function updateActiveCellUI(newColumnIndex) {
@@ -269,14 +278,9 @@ function updateActiveCellUI(newColumnIndex) {
     });
 
     if (newColumnIndex >= 0) {
-        // Add 'active' class to cells in the new active column (except header)
-        // Note: There's no explicit header row for columns anymore,
-        // so this will only apply to the actual track cells.
+        // Add 'active' class to cells in the new active column
         document.querySelectorAll(`.grid-cell[data-column-index="${newColumnIndex}"]`).forEach(cell => {
-            // Ensure we only highlight cells within actual tracks, not the empty header row
-            if (cell.closest('.grid-row') && !cell.closest('.grid-row').querySelector('.grid-label:empty')) {
-                 cell.classList.add('active');
-            }
+            cell.classList.add('active');
         });
         // Scroll the grid to keep the active column in view if needed
         const activeCell = document.querySelector(`.grid-cell[data-column-index="${newColumnIndex}"]`);
@@ -301,17 +305,103 @@ function updateUIControls() {
     const isPlayingOrPaused = status.isPlaying || status.isPaused;
     const areFilesLoaded = Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length;
 
+    // Playback controls
     ui.playBtn.disabled = status.isPlaying || !areFilesLoaded;
     ui.pauseBtn.disabled = !status.isPlaying;
     ui.stopBtn.disabled = !isPlayingOrPaused;
 
-    // Disable BPM and other settings when playing or paused
+    // Grid settings controls
     ui.bpmSlider.disabled = isPlayingOrPaused || !areFilesLoaded;
+    ui.timeNumeratorInput.disabled = isPlayingOrPaused || !areFilesLoaded;
+    ui.timeDenominatorInput.disabled = isPlayingOrPaused || !areFilesLoaded;
+    ui.subdivisionSelector.disabled = isPlayingOrPaused || !areFilesLoaded;
+    ui.applyGridSettingsBtn.disabled = isPlayingOrPaused || !areFilesLoaded;
+
     // Track volume sliders
     document.querySelectorAll('.track-volume-control input[type="range"]').forEach(slider => {
         slider.disabled = !areFilesLoaded; // Only enable if files are loaded
     });
+
+    // Sound selection symbols
+    ui.soundSymbols.forEach(symbol => {
+        symbol.classList.toggle('disabled', !areFilesLoaded);
+        symbol.style.cursor = areFilesLoaded ? 'pointer' : 'not-allowed';
+    });
+    // Grid cells should also be disabled for clicks if files not loaded
+    document.querySelectorAll('.grid-cell').forEach(cell => {
+        cell.style.cursor = areFilesLoaded ? 'pointer' : 'not-allowed';
+    });
 }
+
+// --- Sound Selection Logic ---
+ui.soundSymbols.forEach(symbol => {
+    symbol.addEventListener('click', () => {
+        if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
+            console.warn("Please load all audio files first.");
+            return;
+        }
+
+        const type = symbol.dataset.soundType;
+        if (selectedSoundType === type) {
+            // Deselect if already selected
+            selectedSoundType = null;
+            symbol.classList.remove('selected');
+        } else {
+            // Deselect others and select this one
+            ui.soundSymbols.forEach(s => s.classList.remove('selected'));
+            selectedSoundType = type;
+            symbol.classList.add('selected');
+        }
+    });
+});
+
+// --- Grid Cell Click Logic ---
+function handleGridCellClick(event) {
+    if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
+        console.warn("Please load all audio files first.");
+        return;
+    }
+    if (player.getStatus().isPlaying || player.getStatus().isPaused) {
+        console.warn("Cannot modify grid while playing or paused. Please stop the player first.");
+        return;
+    }
+
+    const cell = event.currentTarget;
+    const trackId = cell.dataset.trackId;
+    const columnIndex = parseInt(cell.dataset.columnIndex, 10);
+
+    if (selectedSoundType) {
+        const currentSoundTypeInCell = currentGridState.get(trackId)?.get(columnIndex);
+
+        if (currentSoundTypeInCell === selectedSoundType) {
+            // If same symbol clicked, remove it
+            currentGridState.get(trackId).delete(columnIndex);
+            player.removeAudioFromGrid(trackId, columnIndex);
+            cell.classList.remove('filled');
+            cell.innerHTML = ''; // Clear symbol
+            console.log(`Removed ${selectedSoundType} from ${trackId} at column ${columnIndex}`);
+        } else {
+            // Place new symbol (or replace existing different one)
+            currentGridState.get(trackId).set(columnIndex, selectedSoundType);
+            const audioKey = `${trackId}-${selectedSoundType}`;
+            const audioBuffer = audioFiles[audioKey];
+            if (audioBuffer) {
+                player.addAudioToGrid(trackId, columnIndex, audioBuffer);
+                cell.classList.add('filled');
+                cell.innerHTML = ''; // Clear previous symbol/text
+                const symbolDiv = document.createElement('div');
+                symbolDiv.classList.add('cell-symbol', selectedSoundType);
+                cell.appendChild(symbolDiv);
+                console.log(`Placed ${selectedSoundType} on ${trackId} at column ${columnIndex}`);
+            } else {
+                console.error(`Audio buffer for ${audioKey} not found. Cannot place sound.`);
+            }
+        }
+    } else {
+        console.log("No sound type selected. Click a symbol (circle/triangle) first.");
+    }
+}
+
 
 // --- Event Listeners for UI Controls ---
 ui.playBtn.addEventListener('click', () => {
@@ -346,13 +436,38 @@ ui.loopToggle.addEventListener('change', (e) => {
     player.setLooping(e.target.checked);
 });
 
-// Listener for the custom 'Choose Files' button
 ui.chooseFilesBtn.addEventListener('click', () => {
     ui.audioFileInput.click(); // Programmatically click the hidden file input
 });
 
-// Listener for file selection change, which now triggers loading
 ui.audioFileInput.addEventListener('change', handleFileSelection);
+
+ui.applyGridSettingsBtn.addEventListener('click', () => {
+    if (player.getStatus().isPlaying || player.getStatus().isPaused) {
+        console.warn("Cannot change grid settings while playing or paused. Please stop the player first.");
+        return;
+    }
+    if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
+        console.warn("Please load all audio files first before applying grid settings.");
+        return;
+    }
+
+    const newNumerator = parseInt(ui.timeNumeratorInput.value, 10);
+    const newDenominator = parseInt(ui.timeDenominatorInput.value, 10);
+    const newSubdivision = parseInt(ui.subdivisionSelector.value, 10);
+
+    // Basic validation
+    if (isNaN(newNumerator) || newNumerator <= 0 ||
+        isNaN(newDenominator) || newDenominator <= 0 ||
+        isNaN(newSubdivision) || ![4, 8, 16, 32].includes(newSubdivision)) {
+        console.error("Invalid grid settings. Please check numerator, denominator, and subdivision.");
+        return;
+    }
+
+    player.setTimeSignature(newNumerator, newDenominator);
+    player.setSubdivisionNoteValue(newSubdivision);
+    renderGrid(); // Re-render grid with new settings
+});
 
 
 // Initialize the application when the DOM is ready

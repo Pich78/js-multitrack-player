@@ -21,7 +21,7 @@ body {
     max-width: 1000px;
 }
 
-h1, h2 {
+h1, h2, h3 {
     color: #424242;
     text-align: center;
     margin-bottom: 25px;
@@ -77,12 +77,29 @@ h1, h2 {
 }
 
 
-.controls-section {
+.controls-section, .grid-settings-section, .sound-selection-section {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
     margin-bottom: 30px;
     gap: 20px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fcfcfc;
+}
+
+.controls-section {
+    margin-top: 20px;
+}
+
+.grid-settings-section h3, .sound-selection-section h3 {
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
 }
 
 .control-group {
@@ -92,10 +109,21 @@ h1, h2 {
     min-width: 150px;
 }
 
+.control-group.inline-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+}
+
 .control-group label {
     margin-bottom: 8px;
     font-weight: 500;
     color: #616161;
+    white-space: nowrap;
+}
+
+.control-group.inline-group label {
+    margin-bottom: 0;
 }
 
 input[type="range"] {
@@ -137,6 +165,23 @@ input[type="checkbox"] {
     accent-color: #2196f3; /* For styling the checkbox */
 }
 
+input[type="number"].small-input {
+    width: 50px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1rem;
+}
+
+select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 1rem;
+    cursor: pointer;
+}
 
 .playback-controls {
     text-align: center;
@@ -157,6 +202,13 @@ input[type="checkbox"] {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.md-button.small-button {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+
 .md-button:hover {
     background-color: #1976d2;
     transform: translateY(-1px);
@@ -173,6 +225,67 @@ input[type="checkbox"] {
     box-shadow: none;
 }
 
+/* Sound Selection Symbols */
+.sound-symbols {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.sound-symbol {
+    width: 50px;
+    height: 50px;
+    border: 2px solid #616161;
+    border-radius: 50%; /* Default to circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sound-symbol.triangle {
+    border-radius: 0; /* Override for triangle */
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    background-color: #e0e0e0;
+}
+
+.sound-symbol:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sound-symbol.selected {
+    border-color: #2196f3;
+    background-color: #bbdefb; /* Light blue */
+    box-shadow: 0 0 8px #2196f3;
+    transform: scale(1.1);
+}
+
+.sound-symbol.disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
+/* Symbols inside grid cells */
+.grid-cell .cell-symbol {
+    width: 20px;
+    height: 20px;
+    background-color: #2196f3; /* Blue for placed symbols */
+    border-radius: 50%; /* Default to circle */
+}
+
+.grid-cell .cell-symbol.slap {
+    border-radius: 0; /* Override for triangle */
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    background-color: #f44336; /* Red for slap symbols */
+}
+
+
 .grid-container {
     display: grid;
     gap: 5px;
@@ -180,6 +293,7 @@ input[type="checkbox"] {
     border: 1px solid #e0e0e0;
     border-radius: 5px;
     overflow-x: auto;
+    min-height: 150px; /* Ensure it's visible even when empty */
 }
 
 .grid-row {
