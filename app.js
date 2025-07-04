@@ -35,6 +35,7 @@ const ui = {
     timeDenominatorInput: document.getElementById('time-denominator'),
     subdivisionSelector: document.getElementById('subdivision-selector'),
     applyGridSettingsBtn: document.getElementById('apply-grid-settings-btn'),
+    clearGridBtn: document.getElementById('clear-grid-btn'), // New button reference
 
     // New UI elements for sound selection
     soundSymbols: document.querySelectorAll('.sound-symbol')
@@ -88,11 +89,11 @@ async function handleFileSelection() {
         ui.playBtn.disabled = true;
     } else if (loadedCount === EXPECTED_FILE_NAMES.length) {
         ui.loadingStatus.textContent = 'All WAV files loaded successfully! Ready for playback.';
-        // Don't call initializePlayerWithGrid here directly, wait for applyGridSettings
-        // Just enable controls that depend on files being loaded
-        updateUIControls();
+        // After files are loaded, populate the player's grid with current UI state
+        // This also re-renders the grid UI to show symbols if they were placed before loading
+        updatePlayerGridDataAndRenderUI();
+        ui.playBtn.disabled = false; // Enable play button
         console.log('Player initialized. All audio files loaded.');
-        // The grid will be rendered when Apply Grid Settings is clicked
     } else {
         ui.loadingStatus.textContent = `Loaded ${loadedCount}/${EXPECTED_FILE_NAMES.length} files. Please try again.`;
         ui.playBtn.disabled = true;
@@ -194,13 +195,13 @@ function renderGrid() {
     if (placeholder) {
         placeholder.remove();
     }
-    updatePlayerGridData(); // Update the player component with the new grid state
+    // updatePlayerGridData(); // Removed: This is now called explicitly after file load or grid settings apply
     updateUIControls();
 }
 
-// Update the actual player component's grid data based on currentGridState
-function updatePlayerGridData() {
-    player.stop(); // Stop player before updating grid data
+// Updates the player component's grid data and re-renders the UI grid
+function updatePlayerGridDataAndRenderUI() {
+    player.stop(); // Ensure player is stopped before updating grid data
 
     // Clear all existing audio from player
     player.getTracks().forEach(track => {
@@ -219,6 +220,7 @@ function updatePlayerGridData() {
             }
         });
     });
+    renderGrid(); // Re-render the UI grid to reflect currentGridState
 }
 
 
@@ -240,38 +242,18 @@ function initializePlayer() {
         player.addTrack(trackId);
     });
 
+    // Render the grid immediately on startup with default settings
+    renderGrid();
+
     // Initial UI updates
     updateUIControls();
 
-    // Event Listeners for Player
-    player.addEventListener('gridCellChanged', (e) => {
-        const { columnIndex } = e.detail;
-        updateActiveCellUI(columnIndex);
-    });
-    player.addEventListener('stop', () => {
-        updateActiveCellUI(-1); // Clear active cell
-        updateUIControls();
-    });
-    player.addEventListener('play', () => updateUIControls());
-    player.addEventListener('pause', () => updateUIControls());
-    player.addEventListener('bpmChanged', (e) => {
-        ui.bpmValue.textContent = e.detail.bpm;
-        ui.bpmSlider.value = e.detail.bpm;
-        updateUIControls();
-    });
-    player.addEventListener('masterVolumeChanged', (e) => {
-        ui.masterVolumeValue.textContent = `${Math.round(e.detail.volume * 100)}%`;
-        ui.masterVolumeSlider.value = Math.round(e.detail.volume * 100);
-    });
-    player.addEventListener('loopingChanged', (e) => {
-        ui.loopToggle.checked = e.detail.loop;
-    });
-
-    console.log('MultiTrackPlayer initialized. Waiting for audio files and grid settings.');
+    console.log('MultiTrackPlayer initialized. Grid rendered. Waiting for audio files.');
 }
 
 // --- UI Interaction and Updates ---
 function updateActiveCellUI(newColumnIndex) {
+    // console.log(`updateActiveCellUI called with index: ${newColumnIndex}`); // Debugging log
     // Remove 'active' class from all cells
     document.querySelectorAll('.grid-cell.active').forEach(cell => {
         cell.classList.remove('active');
@@ -279,7 +261,9 @@ function updateActiveCellUI(newColumnIndex) {
 
     if (newColumnIndex >= 0) {
         // Add 'active' class to cells in the new active column
-        document.querySelectorAll(`.grid-cell[data-column-index="${newColumnIndex}"]`).forEach(cell => {
+        const cellsToHighlight = document.querySelectorAll(`.grid-cell[data-column-index="${newColumnIndex}"]`);
+        // console.log(`Found ${cellsToHighlight.length} cells for column ${newColumnIndex}`); // Debugging log
+        cellsToHighlight.forEach(cell => {
             cell.classList.add('active');
         });
         // Scroll the grid to keep the active column in view if needed
@@ -305,6 +289,8 @@ function updateUIControls() {
     const isPlayingOrPaused = status.isPlaying || status.isPaused;
     const areFilesLoaded = Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length;
 
+    console.log(`updateUIControls: isPlaying=${status.isPlaying}, isPaused=${status.isPaused}, areFilesLoaded=${areFilesLoaded}`); // Debugging log
+
     // Playback controls
     ui.playBtn.disabled = status.isPlaying || !areFilesLoaded;
     ui.pauseBtn.disabled = !status.isPlaying;
@@ -316,6 +302,7 @@ function updateUIControls() {
     ui.timeDenominatorInput.disabled = isPlayingOrPaused || !areFilesLoaded;
     ui.subdivisionSelector.disabled = isPlayingOrPaused || !areFilesLoaded;
     ui.applyGridSettingsBtn.disabled = isPlayingOrPaused || !areFilesLoaded;
+    ui.clearGridBtn.disabled = isPlayingOrPaused || !areFilesLoaded; // Disable clear button if playing/paused or no files
 
     // Track volume sliders
     document.querySelectorAll('.track-volume-control input[type="range"]').forEach(slider => {
@@ -376,7 +363,7 @@ function handleGridCellClick(event) {
         if (currentSoundTypeInCell === selectedSoundType) {
             // If same symbol clicked, remove it
             currentGridState.get(trackId).delete(columnIndex);
-            player.removeAudioFromGrid(trackId, columnIndex);
+            player.removeAudioFromGrid(trackId, columnIndex); // Remove from player
             cell.classList.remove('filled');
             cell.innerHTML = ''; // Clear symbol
             console.log(`Removed ${selectedSoundType} from ${trackId} at column ${columnIndex}`);
@@ -386,7 +373,7 @@ function handleGridCellClick(event) {
             const audioKey = `${trackId}-${selectedSoundType}`;
             const audioBuffer = audioFiles[audioKey];
             if (audioBuffer) {
-                player.addAudioToGrid(trackId, columnIndex, audioBuffer);
+                player.addAudioToGrid(trackId, columnIndex, audioBuffer); // Add to player
                 cell.classList.add('filled');
                 cell.innerHTML = ''; // Clear previous symbol/text
                 const symbolDiv = document.createElement('div');
@@ -402,20 +389,53 @@ function handleGridCellClick(event) {
     }
 }
 
+// --- Clear Grid Logic ---
+function handleClearGrid() {
+    if (player.getStatus().isPlaying || player.getStatus().isPaused) {
+        console.warn("Cannot clear grid while playing or paused. Please stop the player first.");
+        return;
+    }
+    if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
+        console.warn("Please load all audio files first.");
+        return;
+    }
+
+    // Clear the internal grid state
+    currentGridState.forEach(trackCells => trackCells.clear());
+
+    // Stop player and clear its internal audio buffers
+    player.stop();
+    player.getTracks().forEach(track => track.cells.clear());
+
+    // Re-render the grid UI to show it's empty
+    renderGrid();
+    console.log("Grid cleared.");
+}
+
 
 // --- Event Listeners for UI Controls ---
 ui.playBtn.addEventListener('click', () => {
+    console.log(`Play button clicked. AudioContext state: ${audioContext.state}`); // Debugging log
     // Resume AudioContext on first user interaction if it's suspended
     if (audioContext.state === 'suspended') {
         audioContext.resume().then(() => {
+            console.log('AudioContext resumed. Attempting to play...'); // Debugging log
             player.play();
+            updateUIControls(); // Explicitly update after play
         }).catch(e => console.error("Failed to resume AudioContext:", e));
     } else {
         player.play();
+        updateUIControls(); // Explicitly update after play
     }
 });
-ui.pauseBtn.addEventListener('click', () => player.pause());
-ui.stopBtn.addEventListener('click', () => player.stop());
+ui.pauseBtn.addEventListener('click', () => {
+    player.pause();
+    updateUIControls(); // Explicitly update after pause
+});
+ui.stopBtn.addEventListener('click', () => {
+    player.stop();
+    updateUIControls(); // Explicitly update after stop
+});
 
 ui.bpmSlider.addEventListener('input', (e) => {
     const newBPM = parseInt(e.target.value, 10);
@@ -447,9 +467,10 @@ ui.applyGridSettingsBtn.addEventListener('click', () => {
         console.warn("Cannot change grid settings while playing or paused. Please stop the player first.");
         return;
     }
-    if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
+    // Check if files are loaded. If not, only update grid dimensions, not player data.
+    const areFilesLoaded = Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length;
+    if (!areFilesLoaded) {
         console.warn("Please load all audio files first before applying grid settings.");
-        return;
     }
 
     const newNumerator = parseInt(ui.timeNumeratorInput.value, 10);
@@ -466,8 +487,16 @@ ui.applyGridSettingsBtn.addEventListener('click', () => {
 
     player.setTimeSignature(newNumerator, newDenominator);
     player.setSubdivisionNoteValue(newSubdivision);
-    renderGrid(); // Re-render grid with new settings
+    
+    // Only update player's internal grid data if files are loaded
+    if (areFilesLoaded) {
+        updatePlayerGridDataAndRenderUI(); // Update player and re-render grid
+    } else {
+        renderGrid(); // Just re-render grid dimensions if files not loaded yet
+    }
 });
+
+ui.clearGridBtn.addEventListener('click', handleClearGrid); // New event listener for clear button
 
 
 // Initialize the application when the DOM is ready

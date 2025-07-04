@@ -130,7 +130,7 @@ input[type="range"] {
     width: 100%;
     -webkit-appearance: none;
     height: 8px;
-    border-radius: 5px;
+    border-radius: 50%;
     background: #e0e0e0;
     outline: none;
     opacity: 0.7;
@@ -188,6 +188,15 @@ select {
     margin-bottom: 40px;
 }
 
+/* Group for grid action buttons */
+.grid-action-buttons {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
 /* General button style for Play/Pause/Stop */
 .md-button {
     background-color: #2196f3;
@@ -205,7 +214,16 @@ select {
 .md-button.small-button {
     padding: 8px 15px;
     font-size: 0.9rem;
-    margin-top: 10px;
+    margin: 0; /* Override margin from general .md-button */
+}
+
+/* Specific style for the Clear Grid button */
+.md-button.red-button {
+    background-color: #f44336; /* Red color */
+}
+
+.md-button.red-button:hover {
+    background-color: #d32f2f;
 }
 
 
@@ -224,6 +242,11 @@ select {
     cursor: not-allowed;
     box-shadow: none;
 }
+/* Ensure enabled buttons are clickable */
+.md-button:not(:disabled) {
+    pointer-events: auto;
+}
+
 
 /* Sound Selection Symbols */
 .sound-symbols {
@@ -277,6 +300,10 @@ select {
     height: 20px;
     background-color: #2196f3; /* Blue for placed symbols */
     border-radius: 50%; /* Default to circle */
+    display: flex; /* Ensure flex container properties */
+    align-items: center; /* Center content vertically */
+    justify-content: center; /* Center content horizontally */
+    /* border: 1px solid black; /* TEMPORARY: For debugging visibility */
 }
 
 .grid-cell .cell-symbol.slap {
