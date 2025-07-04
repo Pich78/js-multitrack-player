@@ -12,10 +12,13 @@
         <h1>MultiTrackPlayer Demo (Local Files)</h1>
 
         <p class="instruction">
-            **Istruzioni:** Seleziona i 6 file WAV richiesti (itotele-open.wav, itotele-slap.wav, iya-open.wav, iya-slap.wav, okonkolo-open.wav, okonkolo-slap.wav) dal tuo disco. Il caricamento avverrà automaticamente.
+            **Instructions:** Select the 6 required WAV files (itotele-open.wav, itotele-slap.wav, iya-open.wav, iya-slap.wav, okonkolo-open.wav, okonkolo-slap.wav) from your disk. Loading will happen automatically.
         </p>
         <div class="file-input-section">
-            <input type="file" id="audio-file-input" multiple accept=".wav">
+            <!-- Hidden file input -->
+            <input type="file" id="audio-file-input" multiple accept=".wav" style="display: none;">
+            <!-- Styled button to trigger file input -->
+            <button id="choose-files-btn" class="md-button">Choose Files</button>
             <p id="loading-status"></p>
         </div>
 
@@ -44,11 +47,13 @@
 
         <h2>Grid Sequence</h2>
         <div id="grid-container" class="grid-container">
-            <p class="placeholder-text">Carica i file WAV per visualizzare la griglia.</p>
+            <p class="placeholder-text">Load WAV files to display the grid.</p>
         </div>
     </div>
 
+    <!-- Component script -->
     <script src="MultiTrackPlayer.js"></script>
+    <!-- App logic script -->
     <script src="app.js"></script>
 </body>
 </html>

@@ -28,6 +28,55 @@ h1, h2 {
     font-weight: 400;
 }
 
+.instruction {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.file-input-section {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Style for the custom file input button */
+#choose-files-btn {
+    background-color: #4CAF50; /* Green color for file input */
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin: 0 10px;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#choose-files-btn:hover {
+    background-color: #45a049;
+    transform: translateY(-1px);
+}
+
+#choose-files-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+#choose-files-btn:disabled {
+    background-color: #bdbdbd;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+#loading-status {
+    margin-top: 15px;
+    font-size: 0.9em;
+    color: #616161;
+}
+
+
 .controls-section {
     display: flex;
     flex-wrap: wrap;
@@ -94,6 +143,7 @@ input[type="checkbox"] {
     margin-bottom: 40px;
 }
 
+/* General button style for Play/Pause/Stop */
 .md-button {
     background-color: #2196f3;
     color: white;

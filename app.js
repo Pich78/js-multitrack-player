@@ -44,7 +44,7 @@ const initialGridData = {
 
 const ui = {
     audioFileInput: document.getElementById('audio-file-input'),
-    // loadFilesBtn: document.getElementById('load-files-btn'), // Rimosso
+    chooseFilesBtn: document.getElementById('choose-files-btn'), // New button reference
     loadingStatus: document.getElementById('loading-status'),
     playBtn: document.getElementById('play-btn'),
     pauseBtn: document.getElementById('pause-btn'),
@@ -72,13 +72,14 @@ async function decodeAudioFile(file) {
 async function handleFileSelection() {
     const files = ui.audioFileInput.files;
     if (files.length === 0) {
-        ui.loadingStatus.textContent = 'Nessun file selezionato.';
+        ui.loadingStatus.textContent = 'No files selected.';
         ui.playBtn.disabled = true; // Ensure play button is disabled if no files
         return;
     }
 
-    ui.loadingStatus.textContent = 'Caricamento file...';
+    ui.loadingStatus.textContent = 'Loading files...';
     ui.audioFileInput.disabled = true; // Disable input during loading
+    ui.chooseFilesBtn.disabled = true; // Disable custom button during loading
 
     let loadedCount = 0;
     let missingFiles = new Set(EXPECTED_FILE_NAMES);
@@ -95,23 +96,24 @@ async function handleFileSelection() {
                 loadedCount++;
             }
         } else {
-            console.warn(`File non atteso: ${file.name}. Verrà ignorato.`);
+            console.warn(`Unexpected file: ${file.name}. It will be ignored.`);
         }
     }
 
     if (missingFiles.size > 0) {
-        ui.loadingStatus.textContent = `Errore: Mancano i seguenti file: ${Array.from(missingFiles).map(name => `${name}.wav`).join(', ')}`;
+        ui.loadingStatus.textContent = `Error: Missing the following files: ${Array.from(missingFiles).map(name => `${name}.wav`).join(', ')}`;
         ui.playBtn.disabled = true;
     } else if (loadedCount === EXPECTED_FILE_NAMES.length) {
-        ui.loadingStatus.textContent = 'Tutti i file WAV caricati con successo! Pronto per la riproduzione.';
+        ui.loadingStatus.textContent = 'All WAV files loaded successfully! Ready for playback.';
         initializePlayerWithGrid(); // Initialize/re-initialize player with new grid
         ui.playBtn.disabled = false; // Enable play button
     } else {
-        ui.loadingStatus.textContent = `Caricati ${loadedCount}/${EXPECTED_FILE_NAMES.length} file. Riprova.`;
+        ui.loadingStatus.textContent = `Loaded ${loadedCount}/${EXPECTED_FILE_NAMES.length} files. Please try again.`;
         ui.playBtn.disabled = true;
     }
 
     ui.audioFileInput.disabled = false; // Re-enable input after loading attempt
+    ui.chooseFilesBtn.disabled = false; // Re-enable custom button after loading attempt
 }
 
 // --- Grid UI Rendering ---
@@ -261,7 +263,7 @@ function initializePlayerWithGrid() {
             }
         }
     });
-    // Rimuovi il testo segnaposto se presente
+    // Remove placeholder text if present
     const placeholder = ui.gridContainer.querySelector('.placeholder-text');
     if (placeholder) {
         placeholder.remove();
@@ -352,7 +354,12 @@ ui.loopToggle.addEventListener('change', (e) => {
     player.setLooping(e.target.checked);
 });
 
-// Listener per il cambio di selezione dei file, che ora avvia il caricamento
+// Listener for the custom 'Choose Files' button
+ui.chooseFilesBtn.addEventListener('click', () => {
+    ui.audioFileInput.click(); // Programmatically click the hidden file input
+});
+
+// Listener for file selection change, which now triggers loading
 ui.audioFileInput.addEventListener('change', handleFileSelection);
 
 
