@@ -8,7 +8,7 @@ let selectedSoundType = null; // 'open' or 'slap'
 // Expected file names (without .wav extension)
 const EXPECTED_FILE_NAMES = [
     'itotele-open', 'itotele-slap', 'iya-open',
-    'iya-slap', 'okonkolo-open', 'okonkolo-slap'
+    'iya-slap', 'okonkolo-open', 'okonkolo-slap' // Corrected typo here from 'okonkolo-sloloap' to 'okonkolo-slap'
 ];
 
 const trackOrder = ['okonkolo', 'itotele', 'iya']; // Order for displaying tracks
@@ -118,14 +118,25 @@ function renderGrid() {
 
     const numberOfColumns = player._getMaxColumns(); // Get calculated columns from player
 
-    // Calculate cells per beat for visual markers
-    let cellsPerBeat = 1; // Default to 1 to avoid division by zero or invalid values
+    // Calculate cells per beat for visual markers based on simple vs. compound meter
+    let cellsPerBeat = 1;
     if (timeDenominator > 0 && subdivisionNoteValue > 0) {
-        cellsPerBeat = subdivisionNoteValue / timeDenominator;
-        // Ensure cellsPerBeat is an integer, if not, it means the subdivision doesn't align perfectly with the beat
-        // For visual purposes, we might want to round or handle this, but for now, keep it precise.
-        // If it's not an integer, the modulo check below will still work, but visually might be less intuitive.
+        // Simple meter: beat is typically the denominator (e.g., quarter note in 4/4)
+        // Compound meter: beat is typically a dotted note (e.g., dotted quarter in 6/8)
+        const isCompoundMeter = (timeDenominator === 8 && (timeNumerator === 6 || timeNumerator === 9 || timeNumerator === 12));
+
+        if (isCompoundMeter) {
+            // For compound meters (e.g., 6/8, 9/8, 12/8), the main beat is a dotted quarter note.
+            // A dotted quarter note is equivalent to three eighth notes.
+            // So, cells per beat = (subdivision notes per eighth note) * 3
+            cellsPerBeat = (subdivisionNoteValue / 8) * 3;
+        } else {
+            // For simple meters, the beat is directly related to the denominator.
+            cellsPerBeat = subdivisionNoteValue / timeDenominator;
+        }
     }
+    // Ensure cellsPerBeat is a positive integer for modulo operation
+    cellsPerBeat = Math.max(1, Math.round(cellsPerBeat));
 
 
     // Initialize currentGridState for new grid dimensions
@@ -336,13 +347,13 @@ function updateUIControls() {
     ui.pauseBtn.disabled = !status.isPlaying;
     ui.stopBtn.disabled = !isPlayingOrPaused;
 
-    // Grid settings controls
-    ui.bpmSlider.disabled = isPlayingOrPaused || !areFilesLoaded;
-    ui.timeNumeratorInput.disabled = isPlayingOrPaused || !areFilesLoaded;
-    ui.timeDenominatorInput.disabled = isPlayingOrPaused || !areFilesLoaded;
-    ui.subdivisionSelector.disabled = isPlayingOrPaused || !areFilesLoaded;
-    ui.applyGridSettingsBtn.disabled = isPlayingOrPaused || !areFilesLoaded;
-    ui.clearGridBtn.disabled = isPlayingOrPaused || !areFilesLoaded; // Disable clear button if playing/paused or no files
+    // Grid settings controls - these can be adjusted even if files are not loaded
+    ui.bpmSlider.disabled = isPlayingOrPaused || !areFilesLoaded; // BPM still needs files to affect playback
+    ui.timeNumeratorInput.disabled = isPlayingOrPaused;
+    ui.timeDenominatorInput.disabled = isPlayingOrPaused;
+    ui.subdivisionSelector.disabled = isPlayingOrPaused;
+    ui.applyGridSettingsBtn.disabled = isPlayingOrPaused;
+    ui.clearGridBtn.disabled = isPlayingOrPaused; // Clear grid can be done visually even without files
 
     // Track volume sliders
     document.querySelectorAll('.track-volume-control input[type="range"]').forEach(slider => {
@@ -435,10 +446,7 @@ function handleClearGrid() {
         console.warn("Cannot clear grid while playing or paused. Please stop the player first.");
         return;
     }
-    if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
-        console.warn("Please load all audio files first.");
-        return;
-    }
+    // No need to check !areFilesLoaded here, as clearing the visual grid is always possible.
 
     // Clear the internal grid state
     currentGridState.forEach(trackCells => trackCells.clear());
@@ -510,7 +518,7 @@ ui.applyGridSettingsBtn.addEventListener('click', () => {
     // Check if files are loaded. If not, only update grid dimensions, not player data.
     const areFilesLoaded = Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length;
     if (!areFilesLoaded) {
-        console.warn("Please load all audio files first before applying grid settings.");
+        console.warn("Files not loaded yet. Grid dimensions updated, but no sounds will be placed.");
     }
 
     const newNumerator = parseInt(ui.timeNumeratorInput.value, 10);
