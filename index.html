@@ -11,42 +11,46 @@
     <div class="container">
         <h1>MultiTrackPlayer Demo (Local Files)</h1>
 
-        <p class="instruction">
-            **Instructions:** Select the 6 required WAV files (itotele-open.wav, itotele-slap.wav, iya-open.wav, iya-slap.wav, okonkolo-open.wav, okonkolo-slap.wav) from your disk. Loading will happen automatically.
-        </p>
         <div class="file-input-section">
             <!-- Hidden file input -->
             <input type="file" id="audio-file-input" multiple accept=".wav" style="display: none;">
             <!-- Styled button to trigger file input -->
-            <button id="choose-files-btn" class="md-button">Choose Files</button>
+            <button id="choose-files-btn" class="md-button">Load Drum Sounds</button>
             <p id="loading-status"></p>
         </div>
 
-        <div class="controls-section">
+        <div class="all-controls-line">
+            <!-- BPM Control -->
             <div class="control-group">
                 <label for="bpm-slider">BPM: <span id="bpm-value">120</span></label>
                 <input type="range" id="bpm-slider" min="30" max="240" value="120">
             </div>
 
+            <div class="vertical-separator"></div>
+
+            <!-- Master Volume Control -->
             <div class="control-group">
                 <label for="master-volume-slider">Master Volume: <span id="master-volume-value">100%</span></label>
                 <input type="range" id="master-volume-slider" min="0" max="100" value="100">
             </div>
 
+            <div class="vertical-separator"></div>
+
+            <!-- Loop Toggle -->
             <div class="control-group">
                 <label for="loop-toggle">Loop Sequence:</label>
                 <input type="checkbox" id="loop-toggle" checked>
             </div>
-        </div>
 
-        <div class="grid-settings-section">
-            <h3>Grid Settings</h3>
-            <div class="control-group inline-group">
-                <label for="time-numerator">Time Signature:</label>
-                <input type="number" id="time-numerator" min="1" value="4" class="small-input"> /
-                <input type="number" id="time-denominator" min="1" value="4" class="small-input">
-            </div>
-            <div class="control-group inline-group">
+            <div class="vertical-separator"></div>
+
+            <!-- Grid Settings -->
+            <div class="control-group grid-settings-compact">
+                <label>Time Signature:</label>
+                <div class="inline-group">
+                    <input type="number" id="time-numerator" min="1" value="4" class="small-input"> /
+                    <input type="number" id="time-denominator" min="1" value="4" class="small-input">
+                </div>
                 <label for="subdivision-selector">Subdivision:</label>
                 <select id="subdivision-selector">
                     <option value="4">Quarter (4th)</option>
@@ -54,30 +58,37 @@
                     <option value="16" selected>Sixteenth (16th)</option>
                     <option value="32">Thirty-second (32nd)</option>
                 </select>
-            </div>
-            <div class="grid-action-buttons">
-                <button id="apply-grid-settings-btn" class="md-button small-button">Apply Grid Settings</button>
+                <button id="apply-grid-settings-btn" class="md-button small-button">Apply Grid</button>
                 <button id="clear-grid-btn" class="md-button small-button red-button">Clear Grid</button>
             </div>
-        </div>
 
-        <div class="sound-selection-section">
-            <h3>Select Sound to Place:</h3>
-            <div class="sound-symbols">
-                <div class="sound-symbol circle" data-sound-type="open" data-symbol-name="Open Tone"></div>
-                <div class="sound-symbol triangle" data-sound-type="slap" data-symbol-name="Slap Tone"></div>
-                <!-- New Combined Sound Symbol -->
-                <div class="sound-symbol combined" data-sound-type="combined" data-symbol-name="Combined Tone"></div>
+            <div class="vertical-separator"></div>
+
+            <!-- Playback Controls -->
+            <div class="playback-controls-compact">
+                <button id="play-btn" class="md-button" disabled>Play</button>
+                <button id="pause-btn" class="md-button" disabled>Pause</button>
+                <button id="stop-btn" class="md-button" disabled>Stop</button>
             </div>
         </div>
 
-        <div class="playback-controls">
-            <button id="play-btn" class="md-button" disabled>Play</button>
-            <button id="pause-btn" class="md-button" disabled>Pause</button>
-            <button id="stop-btn" class="md-button" disabled>Stop</button>
+        <h3 class="section-heading">Select Sound:</h3>
+        <div class="sound-selection-section">
+            <div class="sound-symbols">
+                <div class="sound-symbol circle" data-sound-type="open"></div>
+                <span class="sound-caption">Open</span>
+            </div>
+            <div class="sound-symbols">
+                <div class="sound-symbol triangle" data-sound-type="slap"></div>
+                <span class="sound-caption">Slap</span>
+            </div>
+            <!-- New Combined Sound Symbol -->
+            <div class="sound-symbols">
+                <div class="sound-symbol combined" data-sound-type="combined"></div>
+                <span class="sound-caption">Mordito</span>
+            </div>
         </div>
 
-        <h2>Grid Sequence</h2>
         <div id="grid-container" class="grid-container">
             <!-- Grid will be dynamically generated here by app.js -->
         </div>

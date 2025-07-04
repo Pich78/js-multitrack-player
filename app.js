@@ -45,7 +45,7 @@ const SLAP_VOLUME_MULTIPLIER = 3.0;
 
 const ui = {
     audioFileInput: document.getElementById('audio-file-input'),
-    chooseFilesBtn: document.getElementById('choose-files-btn'), // New button reference
+    chooseFilesBtn: document.getElementById('choose-files-btn'), // Updated button reference
     loadingStatus: document.getElementById('loading-status'),
     playBtn: document.getElementById('play-btn'),
     pauseBtn: document.getElementById('pause-btn'),
@@ -64,7 +64,7 @@ const ui = {
     applyGridSettingsBtn: document.getElementById('apply-grid-settings-btn'),
     clearGridBtn: document.getElementById('clear-grid-btn'), // New button reference
 
-    // New UI elements for sound selection
+    // New UI elements for sound selection (no direct change needed here, just HTML structure)
     soundSymbols: document.querySelectorAll('.sound-symbol')
 };
 
@@ -376,7 +376,7 @@ function updatePlayerGridDataAndRenderUI() {
                     audioDataToPass = { open: openBuffer, slap: slapBuffer, slapMultiplier: SLAP_VOLUME_MULTIPLIER };
                 } else {
                     console.error(`Cannot place combined sound: Missing required audio buffers for ${trackId}.`);
-                    return; // Skip placing this sound if buffers are missing
+                    return;
                 }
             } else {
                 // For 'open' or 'slap', pass the single buffer
@@ -385,7 +385,7 @@ function updatePlayerGridDataAndRenderUI() {
                     audioDataToPass = singleBuffer;
                 } else {
                     console.error(`Cannot place ${selectedSoundType} sound: Missing audio buffer for ${trackId}-${selectedSoundType}.`);
-                    return; // Skip placing this sound if buffer is missing
+                    return;
                 }
             }
             player.addAudioToGrid(trackId, columnIndex, audioDataToPass);
@@ -512,10 +512,10 @@ function updateUIControls() {
     ui.applyGridSettingsBtn.disabled = isPlayingOrPaused;
     ui.clearGridBtn.disabled = isPlayingOrPaused; // Clear grid can be done visually even without files
 
-    // Track volume sliders
-    document.querySelectorAll('.track-volume-control input[type="range"]').forEach(slider => {
-        slider.disabled = !areFilesLoaded; // Only enable if files are loaded
-    });
+    // Track volume sliders (no longer separate, handled by smart cells)
+    // document.querySelectorAll('.track-volume-control input[type="range"]').forEach(slider => {
+    //     slider.disabled = !areFilesLoaded; // Only enable if files are loaded
+    // });
 
     // Sound selection symbols
     ui.soundSymbols.forEach(symbol => {
@@ -530,22 +530,26 @@ function updateUIControls() {
 
 // --- Sound Selection Logic ---
 ui.soundSymbols.forEach(symbol => {
-    symbol.addEventListener('click', () => {
+    symbol.addEventListener('click', (event) => {
+        // Find the actual sound-symbol div, not the caption if clicked
+        const targetSymbol = event.currentTarget.closest('.sound-symbols').querySelector('.sound-symbol');
+        if (!targetSymbol) return; // Should not happen if structure is correct
+
         if (!Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length) {
             console.warn("Please load all audio files first.");
             return;
         }
 
-        const type = symbol.dataset.soundType;
+        const type = targetSymbol.dataset.soundType;
         if (selectedSoundType === type) {
             // Deselect if already selected
             selectedSoundType = null;
-            ui.soundSymbols.forEach(s => s.classList.remove('selected')); // Deselect all
+            document.querySelectorAll('.sound-symbol').forEach(s => s.classList.remove('selected')); // Deselect all
         } else {
             // Deselect others and select this one
-            ui.soundSymbols.forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('.sound-symbol').forEach(s => s.classList.remove('selected'));
             selectedSoundType = type;
-            symbol.classList.add('selected');
+            targetSymbol.classList.add('selected');
         }
     });
 });

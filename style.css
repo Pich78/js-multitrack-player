@@ -17,22 +17,23 @@ body {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     padding: 30px;
-    width: 90%;
-    max-width: 1000px;
+    width: 95%; /* Increased width for more space */
+    max-width: 1200px; /* Increased max-width */
 }
 
-h1, h2, h3 {
+h1 {
     color: #424242;
     text-align: center;
     margin-bottom: 25px;
     font-weight: 400;
 }
 
-.instruction {
+.section-heading {
     text-align: center;
-    margin-bottom: 20px;
-    color: #555;
-    font-size: 0.95em;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    color: #424242;
 }
 
 .file-input-section {
@@ -76,37 +77,36 @@ h1, h2, h3 {
     color: #616161;
 }
 
-
-.controls-section, .grid-settings-section, .sound-selection-section {
+/* New: All controls on one line */
+.all-controls-line {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* Space between control groups */
     margin-bottom: 30px;
-    gap: 20px;
     padding: 15px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     background-color: #fcfcfc;
 }
 
-.controls-section {
-    margin-top: 20px;
+/* New: Vertical separator */
+.vertical-separator {
+    width: 1px;
+    height: 60px; /* Height of the separator */
+    background-color: #ccc;
+    margin: 0 10px;
+    flex-shrink: 0; /* Prevent it from shrinking */
 }
 
-.grid-settings-section h3, .sound-selection-section h3 {
-    width: 100%;
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.2em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
+/* Adjustments for compact control groups */
 .control-group {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 150px;
+    min-width: 120px; /* Adjusted min-width for compactness */
+    padding: 5px 10px; /* Added padding for spacing */
 }
 
 .control-group.inline-group {
@@ -116,10 +116,11 @@ h1, h2, h3 {
 }
 
 .control-group label {
-    margin-bottom: 8px;
+    margin-bottom: 5px; /* Reduced margin */
     font-weight: 500;
     color: #616161;
     white-space: nowrap;
+    font-size: 0.9em; /* Smaller font size */
 }
 
 .control-group.inline-group label {
@@ -166,36 +167,48 @@ input[type="checkbox"] {
 }
 
 input[type="number"].small-input {
-    width: 50px;
-    padding: 8px;
+    width: 40px; /* Smaller width */
+    padding: 5px; /* Smaller padding */
     border: 1px solid #ccc;
     border-radius: 4px;
     text-align: center;
-    font-size: 1rem;
+    font-size: 0.9rem; /* Smaller font size */
 }
 
 select {
-    padding: 8px;
+    padding: 5px; /* Smaller padding */
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: white;
-    font-size: 1rem;
+    font-size: 0.9rem; /* Smaller font size */
     cursor: pointer;
 }
 
-.playback-controls {
-    text-align: center;
-    margin-bottom: 40px;
+/* Specific styling for compact grid settings */
+.grid-settings-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px; /* Space between elements in this group */
+    min-width: 200px; /* Adjust as needed */
 }
 
-/* Group for grid action buttons */
-.grid-action-buttons {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-top: 15px;
+.grid-settings-compact .inline-group {
+    margin-bottom: 0;
 }
+
+.grid-settings-compact .md-button {
+    width: 100%; /* Make buttons take full width of their container */
+    margin: 0; /* Remove external margins */
+}
+
+.playback-controls-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 100px; /* Adjust as needed */
+}
+
 
 /* General button style for Play/Pause/Stop */
 .md-button {
@@ -213,7 +226,7 @@ select {
 
 .md-button.small-button {
     padding: 8px 15px;
-    font-size: 0.9rem;
+    font-size: 0.8rem; /* Smaller font size */
     margin: 0; /* Override margin from general .md-button */
 }
 
@@ -249,12 +262,20 @@ select {
 
 
 /* Sound Selection Symbols */
-.sound-symbols {
+.sound-selection-section {
     display: flex;
     gap: 20px;
     justify-content: center;
     width: 100%;
     margin-top: 10px;
+    flex-wrap: wrap; /* Allow wrapping */
+}
+
+.sound-symbols {
+    display: flex;
+    flex-direction: column; /* Stack symbol and caption */
+    align-items: center;
+    gap: 5px; /* Space between symbol and caption */
 }
 
 .sound-symbol {
@@ -312,6 +333,14 @@ select {
     cursor: not-allowed !important;
 }
 
+/* New: Sound Caption */
+.sound-caption {
+    font-size: 0.85em;
+    color: #555;
+    text-align: center;
+    white-space: nowrap;
+}
+
 /* Symbols inside grid cells */
 .grid-cell .cell-symbol {
     width: 20px;
@@ -356,6 +385,7 @@ select {
     border-radius: 5px;
     overflow-x: auto;
     min-height: 150px; /* Ensure it's visible even when empty */
+    margin-top: 30px; /* Add some space from the sound selection */
 }
 
 .grid-row {
