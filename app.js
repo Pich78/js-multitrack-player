@@ -131,25 +131,8 @@ function renderGrid() {
     });
     const numberOfColumns = maxCols > 0 ? maxCols : 16; // Default to 16 if no audio yet
 
-    // Create column headers
-    const headerRow = document.createElement('div');
-    headerRow.classList.add('grid-row');
-    headerRow.style.gridTemplateColumns = `minmax(100px, 1fr) repeat(${numberOfColumns}, minmax(50px, 1fr)) 100px`; // Label + cells + volume control
-    const emptyHeader = document.createElement('div');
-    emptyHeader.classList.add('grid-label');
-    emptyHeader.textContent = 'Col/Beat';
-    headerRow.appendChild(emptyHeader);
-    for (let i = 0; i < numberOfColumns; i++) {
-        const colHeader = document.createElement('div');
-        colHeader.classList.add('grid-cell');
-        colHeader.textContent = i; // Column index
-        headerRow.appendChild(colHeader);
-    }
-    const volHeader = document.createElement('div');
-    volHeader.classList.add('grid-label');
-    volHeader.textContent = 'Vol';
-    headerRow.appendChild(volHeader);
-    ui.gridContainer.appendChild(headerRow);
+    // No header row with column numbers or labels needed anymore.
+    // The grid will start directly with track labels and cells.
 
     // Render tracks
     trackOrder.forEach(trackId => {
@@ -158,6 +141,7 @@ function renderGrid() {
 
         const rowElement = document.createElement('div');
         rowElement.classList.add('grid-row');
+        // Grid layout: first column for track label, then cells, then volume control
         rowElement.style.gridTemplateColumns = `minmax(100px, 1fr) repeat(${numberOfColumns}, minmax(50px, 1fr)) minmax(80px, 1fr)`;
 
         const labelElement = document.createElement('div');
@@ -187,7 +171,7 @@ function renderGrid() {
         const trackVolumeControl = document.createElement('div');
         trackVolumeControl.classList.add('track-volume-control');
         const volLabel = document.createElement('label');
-        volLabel.textContent = `${trackId} Vol`;
+        volLabel.textContent = `${trackId} Vol`; // Still show "TrackName Vol" for individual sliders
         const volSlider = document.createElement('input');
         volSlider.type = 'range';
         volSlider.min = '0';
@@ -283,8 +267,13 @@ function updateActiveCellUI(newColumnIndex) {
 
     if (newColumnIndex >= 0) {
         // Add 'active' class to cells in the new active column (except header)
+        // Note: There's no explicit header row for columns anymore,
+        // so this will only apply to the actual track cells.
         document.querySelectorAll(`.grid-cell[data-column-index="${newColumnIndex}"]`).forEach(cell => {
-            cell.classList.add('active');
+            // Ensure we only highlight cells within actual tracks, not the empty header row
+            if (cell.closest('.grid-row') && !cell.closest('.grid-row').querySelector('.grid-label:empty')) {
+                 cell.classList.add('active');
+            }
         });
         // Scroll the grid to keep the active column in view if needed
         const activeCell = document.querySelector(`.grid-cell[data-column-index="${newColumnIndex}"]`);
