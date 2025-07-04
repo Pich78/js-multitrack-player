@@ -8,13 +8,37 @@ let selectedSoundType = null; // 'open' or 'slap'
 // Expected file names (without .wav extension)
 const EXPECTED_FILE_NAMES = [
     'itotele-open', 'itotele-slap', 'iya-open',
-    'iya-slap', 'okonkolo-open', 'okonkolo-slap' // Corrected typo here from 'okonkolo-sloloap' to 'okonkolo-slap'
+    'iya-slap', 'okonkolo-open', 'okonkolo-slap'
 ];
 
 const trackOrder = ['okonkolo', 'itotele', 'iya']; // Order for displaying tracks
 
 // Initial grid data will be empty now, filled by user interaction
 let currentGridState = new Map(); // Map<trackId, Map<columnIndex, soundType>>
+
+// Store track mute states and last non-muted volumes
+const trackMuteStates = new Map(); // Map<trackId, boolean>
+const trackLastVolumes = new Map(); // Map<trackId, number> (0.0 to 1.0)
+
+// Define color palettes for each instrument
+const instrumentColors = {
+    okonkolo: {
+        dark: '#C62828', // Dark Red
+        light: '#EF9A9A' // Light Red
+    },
+    itotele: {
+        dark: '#FBC02D', // Dark Yellow
+        light: '#FFF59D' // Light Yellow
+    },
+    iya: {
+        dark: '#1565C0', // Dark Blue
+        light: '#90CAF9' // Light Blue
+    },
+    muted: {
+        dark: '#757575', // Gray
+        light: '#BDBDBD' // Lighter Gray
+    }
+};
 
 const ui = {
     audioFileInput: document.getElementById('audio-file-input'),
@@ -160,13 +184,110 @@ function renderGrid() {
     trackOrder.forEach(trackId => {
         const rowElement = document.createElement('div');
         rowElement.classList.add('grid-row');
-        // Grid layout: first column for track label, then cells, then volume control
-        rowElement.style.gridTemplateColumns = `minmax(100px, 1fr) repeat(${numberOfColumns}, minmax(50px, 1fr)) minmax(80px, 1fr)`;
+        // Grid layout: first column for track control cell, then cells
+        rowElement.style.gridTemplateColumns = `minmax(100px, 1fr) repeat(${numberOfColumns}, minmax(50px, 1fr))`;
 
-        const labelElement = document.createElement('div');
-        labelElement.classList.add('grid-label');
-        labelElement.textContent = trackId.charAt(0).toUpperCase() + trackId.slice(1); // Capitalize
-        rowElement.appendChild(labelElement);
+        // Create the smart track control cell
+        const trackControlCell = document.createElement('div');
+        trackControlCell.classList.add('track-control-cell', `${trackId}-color`);
+        trackControlCell.dataset.trackId = trackId;
+        trackControlCell.textContent = trackId.charAt(0).toUpperCase() + trackId.slice(1); // Capitalize
+        trackControlCell.tabIndex = 0; // Make it focusable for keyboard events
+
+
+        // Initialize mute state and last volume if not already set
+        if (!trackMuteStates.has(trackId)) {
+            trackMuteStates.set(trackId, false); // Not muted by default
+        }
+        if (!trackLastVolumes.has(trackId)) {
+            trackLastVolumes.set(trackId, 1.0); // Full volume by default
+        }
+
+        // Apply initial visual state (color and mute status)
+        updateTrackControlCellVisuals(trackId, player.getTracks().get(trackId)?.gainNode?.gain?.value || 1.0, trackMuteStates.get(trackId));
+
+        // Add event listeners for mute/unmute (click) and volume control (drag + keyboard)
+        let isDraggingVolume = false;
+        let startX = 0; // Changed to startX for horizontal drag
+        let initialVolume = 0;
+
+        trackControlCell.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left click
+                isDraggingVolume = true;
+                startX = e.clientX; // Changed to clientX
+                initialVolume = player.getTracks().get(trackId)?.gainNode?.gain?.value || 1.0;
+                trackControlCell.style.cursor = 'ew-resize'; // Changed cursor to east-west resize
+                e.preventDefault(); // Prevent text selection during drag
+            }
+        });
+
+        // Use document for mousemove and mouseup to allow dragging outside the element
+        document.addEventListener('mousemove', (e) => {
+            if (isDraggingVolume) {
+                const deltaX = e.clientX - startX; // Changed to deltaX
+                // Sensitivity: adjust this value to make the slider more or less sensitive
+                const sensitivity = 0.005;
+                let newVolume = initialVolume + deltaX * sensitivity; // Dragging right increases volume
+
+                // Clamp volume between 0 and 1
+                newVolume = Math.max(0, Math.min(1, newVolume));
+
+                player.setTrackVolume(trackId, newVolume);
+                trackLastVolumes.set(trackId, newVolume); // Update last non-muted volume
+                if (trackMuteStates.get(trackId)) { // If muted, unmute it when volume is changed by dragging
+                    player.setTrackMuted(trackId, false);
+                    trackMuteStates.set(trackId, false);
+                }
+                updateTrackControlCellVisuals(trackId, newVolume, trackMuteStates.get(trackId));
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDraggingVolume) {
+                isDraggingVolume = false;
+                trackControlCell.style.cursor = 'pointer'; // Restore cursor
+            }
+        });
+
+        // Keyboard control for volume
+        trackControlCell.addEventListener('keydown', (e) => {
+            const step = 0.05; // Volume adjustment step
+            let currentVolume = player.getTracks().get(trackId)?.gainNode?.gain?.value || 1.0;
+            let newVolume = currentVolume;
+
+            if (e.key === 'ArrowRight') {
+                newVolume = Math.min(1, currentVolume + step);
+                e.preventDefault(); // Prevent page scrolling
+            } else if (e.key === 'ArrowLeft') {
+                newVolume = Math.max(0, currentVolume - step);
+                e.preventDefault(); // Prevent page scrolling
+            }
+
+            if (newVolume !== currentVolume) {
+                player.setTrackVolume(trackId, newVolume);
+                trackLastVolumes.set(trackId, newVolume);
+                if (trackMuteStates.get(trackId)) {
+                    player.setTrackMuted(trackId, false);
+                    trackMuteStates.set(trackId, false);
+                }
+                updateTrackControlCellVisuals(trackId, newVolume, trackMuteStates.get(trackId));
+            }
+        });
+
+        trackControlCell.addEventListener('click', (e) => {
+            // Prevent click from firing if it was part of a drag operation
+            // A simple way is to check if mousemove happened significantly
+            if (Math.abs(e.clientX - startX) < 5 && !isDraggingVolume) { // Threshold of 5 pixels for horizontal drag
+                const isMuted = trackMuteStates.get(trackId);
+                const newMuteState = !isMuted;
+                player.setTrackMuted(trackId, newMuteState);
+                trackMuteStates.set(trackId, newMuteState);
+                updateTrackControlCellVisuals(trackId, player.getTracks().get(trackId)?.gainNode?.gain?.value || 1.0, newMuteState);
+            }
+        });
+
+        rowElement.appendChild(trackControlCell);
+
 
         for (let i = 0; i < numberOfColumns; i++) {
             const cellElement = document.createElement('div');
@@ -193,26 +314,6 @@ function renderGrid() {
             rowElement.appendChild(cellElement);
         }
 
-        // Add track volume control
-        const trackVolumeControl = document.createElement('div');
-        trackVolumeControl.classList.add('track-volume-control');
-        const volLabel = document.createElement('label');
-        volLabel.textContent = `${trackId} Vol`; // Still show "TrackName Vol" for individual sliders
-        const volSlider = document.createElement('input');
-        volSlider.type = 'range';
-        volSlider.min = '0';
-        volSlider.max = '100';
-        // Get current track volume from player and convert to slider value
-        const currentTrackVolume = player.getTracks().get(trackId)?.gainNode?.gain?.value;
-        volSlider.value = Math.round((currentTrackVolume !== undefined ? currentTrackVolume : 1.0) * 100); // Default to 1.0 if not set
-        volSlider.dataset.trackId = trackId;
-        volSlider.addEventListener('input', (e) => {
-            const vol = parseFloat(e.target.value) / 100;
-            player.setTrackVolume(trackId, vol);
-        });
-        trackVolumeControl.append(volLabel, volSlider);
-        rowElement.appendChild(trackVolumeControl);
-
         ui.gridContainer.appendChild(rowElement);
     });
 
@@ -221,9 +322,34 @@ function renderGrid() {
     if (placeholder) {
         placeholder.remove();
     }
-    // updatePlayerGridData(); // Removed: This is now called explicitly after file load or grid settings apply
     updateUIControls();
 }
+
+/**
+ * Updates the visual appearance of a track control cell based on its volume and mute state.
+ * Uses a linear gradient to show volume percentage.
+ * @param {string} trackId The ID of the track.
+ * @param {number} volume The current volume (0.0 to 1.0).
+ * @param {boolean} isMuted The current mute state.
+ */
+function updateTrackControlCellVisuals(trackId, volume, isMuted) {
+    const trackControlCell = document.querySelector(`.track-control-cell[data-track-id="${trackId}"]`);
+    if (!trackControlCell) return;
+
+    const colors = instrumentColors[trackId];
+    const darkColor = colors.dark;
+    const lightColor = colors.light;
+
+    if (isMuted) {
+        trackControlCell.classList.add('muted');
+        trackControlCell.style.background = ''; // Clear gradient
+    } else {
+        trackControlCell.classList.remove('muted');
+        const volumePercentage = Math.round(volume * 100);
+        trackControlCell.style.background = `linear-gradient(to right, ${darkColor} ${volumePercentage}%, ${lightColor} ${volumePercentage}%)`;
+    }
+}
+
 
 // Updates the player component's grid data and re-renders the UI grid
 function updatePlayerGridDataAndRenderUI() {
@@ -276,9 +402,9 @@ function initializePlayer() {
 
     console.log('MultiTrackPlayer initialized. Grid rendered. Waiting for audio files.');
 
-    // Event Listeners for Player - THIS IS THE FOCUS AREA
+    // Event Listeners for Player
     player.addEventListener('gridCellChanged', (e) => {
-        console.log('gridCellChanged event RECEIVED in app.js!', e.detail.columnIndex); // NEW LOG HERE
+        // console.log('gridCellChanged event RECEIVED in app.js!', e.detail.columnIndex);
         const { columnIndex } = e.detail;
         updateActiveCellUI(columnIndex);
     });
@@ -300,11 +426,23 @@ function initializePlayer() {
     player.addEventListener('loopingChanged', (e) => {
         ui.loopToggle.checked = e.detail.loop;
     });
+    // Listen for track volume changes from player (e.g., if we add other ways to change volume)
+    player.addEventListener('trackVolumeChanged', (e) => {
+        const { trackId, volume } = e.detail;
+        trackLastVolumes.set(trackId, volume); // Keep track of last volume
+        updateTrackControlCellVisuals(trackId, volume, trackMuteStates.get(trackId));
+    });
+    // Listen for track mute changes from player
+    player.addEventListener('trackMuteChanged', (e) => {
+        const { trackId, isMuted } = e.detail;
+        trackMuteStates.set(trackId, isMuted);
+        updateTrackControlCellVisuals(trackId, player.getTracks().get(trackId)?.gainNode?.gain?.value || 1.0, isMuted);
+    });
 }
 
 // --- UI Interaction and Updates ---
 function updateActiveCellUI(newColumnIndex) {
-    console.log(`updateActiveCellUI called with index: ${newColumnIndex}`); // Debugging log
+    // console.log(`updateActiveCellUI called with index: ${newColumnIndex}`);
     // Remove 'active' class from all cells
     document.querySelectorAll('.grid-cell.active').forEach(cell => {
         cell.classList.remove('active');
@@ -313,7 +451,7 @@ function updateActiveCellUI(newColumnIndex) {
     if (newColumnIndex >= 0) {
         // Add 'active' class to cells in the new active column
         const cellsToHighlight = document.querySelectorAll(`.grid-cell[data-column-index="${newColumnIndex}"]`);
-        console.log(`Found ${cellsToHighlight.length} cells for column ${newColumnIndex}`); // Debugging log
+        // console.log(`Found ${cellsToHighlight.length} cells for column ${newColumnIndex}`);
         cellsToHighlight.forEach(cell => {
             cell.classList.add('active');
         });
@@ -340,7 +478,7 @@ function updateUIControls() {
     const isPlayingOrPaused = status.isPlaying || status.isPaused;
     const areFilesLoaded = Object.keys(audioFiles).length === EXPECTED_FILE_NAMES.length;
 
-    console.log(`updateUIControls: isPlaying=${status.isPlaying}, isPaused=${status.isPaused}, areFilesLoaded=${areFilesLoaded}`); // Debugging log
+    // console.log(`updateUIControls: isPlaying=${status.isPlaying}, isPaused=${status.isPaused}, areFilesLoaded=${areFilesLoaded}`);
 
     // Playback controls
     ui.playBtn.disabled = status.isPlaying || !areFilesLoaded;

@@ -303,7 +303,6 @@ select {
     display: flex; /* Ensure flex container properties */
     align-items: center; /* Center content vertically */
     justify-content: center; /* Center content horizontally */
-    /* Removed temporary border: border: 1px solid black; */
 }
 
 .grid-cell .cell-symbol.slap {
@@ -329,9 +328,9 @@ select {
     min-width: fit-content; /* Ensure row takes minimum content width */
 }
 
-.grid-label {
+/* New: Smart Track Control Cell */
+.track-control-cell {
     grid-column: 1; /* Always first column */
-    background-color: #e3f2fd;
     padding: 10px;
     border-radius: 4px;
     font-weight: 500;
@@ -339,11 +338,43 @@ select {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #1565c0;
-    white-space: nowrap; /* Prevent text wrapping */
+    color: white; /* Text color for instrument names */
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 100px; /* Same as minmax(100px, 1fr) for alignment */
+    height: 40px; /* Same as grid-cell height */
+    cursor: pointer; /* Indicates interactivity */
+    transition: background-color 0.1s ease; /* Smooth transition for mute/unmute */
+    box-sizing: border-box; /* Include padding and border in sizing */
+    position: relative; /* For the volume overlay */
+    border: 1px solid transparent; /* Base border */
 }
+
+/* Instrument specific colors */
+.track-control-cell.okonkolo-color {
+    background-color: #C62828; /* Dark Red */
+}
+.track-control-cell.itotele-color {
+    background-color: #FBC02D; /* Dark Yellow */
+}
+.track-control-cell.iya-color {
+    background-color: #1565C0; /* Dark Blue */
+}
+
+/* Muted state */
+.track-control-cell.muted {
+    background-color: #757575 !important; /* Gray color when muted */
+    color: #e0e0e0; /* Lighter text for gray background */
+    border-color: #616161;
+}
+
+/* Active/Playing state for track control cell */
+.track-control-cell.active-track {
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); /* Add a subtle shadow when track is active/playing */
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
 
 .grid-cell {
     background-color: #e0e0e0;
@@ -391,7 +422,8 @@ select {
     color: #388e3c;
 }
 
-
+/* Removed old track-volume-control styles */
+/*
 .track-volume-control {
     display: flex;
     flex-direction: column;
@@ -406,3 +438,4 @@ select {
 .track-volume-control input[type="range"] {
     width: 100%;
 }
+*/

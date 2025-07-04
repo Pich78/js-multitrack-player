@@ -12,8 +12,8 @@ class MultiTrackPlayer extends EventTarget {
     masterGainNode;
 
     /**
-     * Stores track data: { gainNode: GainNode, cells: Map<number, AudioBuffer> }
-     * @type {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer> }>}
+     * Stores track data: { gainNode: GainNode, cells: Map<number, AudioBuffer>, _isMuted: boolean, _lastVolume: number }
+     * @type {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer>, _isMuted: boolean, _lastVolume: number }>}
      */
     _tracks = new Map();
 
@@ -135,9 +135,7 @@ class MultiTrackPlayer extends EventTarget {
                 }
             }
 
-            // --- ADDED THIS LOG ---
-            console.log(`MultiTrackPlayer: Scheduling cell ${this._currentCellIndex} for time ${this._nextCellTime.toFixed(3)}`);
-            // --- END ADDITION ---
+            // console.log(`MultiTrackPlayer: Scheduling cell ${this._currentCellIndex} for time ${this._nextCellTime.toFixed(3)}`);
 
             // Dispatch event for the *current* cell being scheduled
             this.dispatchEvent(new CustomEvent('gridCellChanged', {
@@ -149,20 +147,23 @@ class MultiTrackPlayer extends EventTarget {
 
             // Schedule sounds for the current cell
             this._tracks.forEach(track => {
-                const audioBuffer = track.cells.get(this._currentCellIndex);
-                if (audioBuffer) {
-                    const source = this.audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(track.gainNode);
+                // Only play if the track is not muted
+                if (!track._isMuted) {
+                    const audioBuffer = track.cells.get(this._currentCellIndex);
+                    if (audioBuffer) {
+                        const source = this.audioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(track.gainNode);
 
-                    // Store reference to stop it later if needed
-                    this._scheduledSources.add(source);
-                    source.onended = () => {
-                        this._scheduledSources.delete(source);
-                    };
+                        // Store reference to stop it later if needed
+                        this._scheduledSources.add(source);
+                        source.onended = () => {
+                            this._scheduledSources.delete(source);
+                        };
 
-                    // Schedule the sound
-                    source.start(this._nextCellTime);
+                        // Schedule the sound
+                        source.start(this._nextCellTime);
+                    }
                 }
             });
 
@@ -326,7 +327,8 @@ class MultiTrackPlayer extends EventTarget {
         }
         const gainNode = this.audioContext.createGain();
         gainNode.connect(this.masterGainNode);
-        this._tracks.set(trackId, { gainNode: gainNode, cells: new Map() });
+        // Initialize track with mute state and last volume
+        this._tracks.set(trackId, { gainNode: gainNode, cells: new Map(), _isMuted: false, _lastVolume: 1.0 });
         this.dispatchEvent(new CustomEvent('trackAdded', { detail: { trackId } }));
     }
 
@@ -409,9 +411,35 @@ class MultiTrackPlayer extends EventTarget {
             console.warn("Volume must be between 0.0 and 1.0.");
             volume = Math.max(0, Math.min(1, volume));
         }
-        track.gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        // Only update gain if not muted, otherwise, store for when unmuted
+        if (!track._isMuted) {
+            track.gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        }
+        track._lastVolume = volume; // Always store the last desired volume
         this.dispatchEvent(new CustomEvent('trackVolumeChanged', { detail: { trackId, volume } }));
     }
+
+    /**
+     * Mutes or unmutes a specific track.
+     * @param {string} trackId - The ID of the track.
+     * @param {boolean} isMuted - True to mute, false to unmute.
+     */
+    setTrackMuted(trackId, isMuted) {
+        const track = this._tracks.get(trackId);
+        if (!track) {
+            console.warn(`Track with ID '${trackId}' does not exist.`);
+            return;
+        }
+
+        track._isMuted = isMuted;
+        if (isMuted) {
+            track.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Mute
+        } else {
+            track.gainNode.gain.setValueAtTime(track._lastVolume, this.audioContext.currentTime); // Restore last volume
+        }
+        this.dispatchEvent(new CustomEvent('trackMuteChanged', { detail: { trackId, isMuted } }));
+    }
+
 
     /**
      * Sets the master volume of the player.
@@ -468,7 +496,7 @@ class MultiTrackPlayer extends EventTarget {
 
     /**
      * Returns the map of tracks and their contents.
-     * @returns {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer> }>}
+     * @returns {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer>, _isMuted: boolean, _lastVolume: number }>}
      */
     getTracks() {
         return this._tracks;
