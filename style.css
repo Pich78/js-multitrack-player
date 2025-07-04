@@ -1,0 +1,209 @@
+/* style.css */
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 90%;
+    max-width: 1000px;
+}
+
+h1, h2 {
+    color: #424242;
+    text-align: center;
+    margin-bottom: 25px;
+    font-weight: 400;
+}
+
+.controls-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin-bottom: 30px;
+    gap: 20px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 150px;
+}
+
+.control-group label {
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #616161;
+}
+
+input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 8px;
+    border-radius: 5px;
+    background: #e0e0e0;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #2196f3;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #2196f3;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    margin-top: 5px;
+    accent-color: #2196f3; /* For styling the checkbox */
+}
+
+
+.playback-controls {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.md-button {
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin: 0 10px;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.md-button:hover {
+    background-color: #1976d2;
+    transform: translateY(-1px);
+}
+
+.md-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.md-button:disabled {
+    background-color: #bdbdbd;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.grid-container {
+    display: grid;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+.grid-row {
+    display: grid;
+    grid-auto-flow: column; /* Cells flow horizontally */
+    grid-auto-columns: minmax(50px, 1fr); /* Each cell is at least 50px, then expands */
+    gap: 5px;
+    min-width: fit-content; /* Ensure row takes minimum content width */
+}
+
+.grid-label {
+    grid-column: 1; /* Always first column */
+    background-color: #e3f2fd;
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1565c0;
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.grid-cell {
+    background-color: #e0e0e0;
+    border: 1px solid #c0c0c0;
+    border-radius: 4px;
+    padding: 10px;
+    min-width: 50px;
+    height: 40px; /* Fixed height for cells */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: #757575;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: background-color 0.1s ease;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.grid-cell.active {
+    background-color: #ffccbc; /* Light orange for active cell */
+    border-color: #ff8a65;
+    box-shadow: 0 0 5px #ff8a65;
+}
+
+.grid-cell.filled {
+    background-color: #a5d6a7; /* Light green for filled cell */
+    border-color: #66bb6a;
+    color: #388e3c;
+}
+
+.grid-cell.active.filled {
+    background-color: #ffab91; /* Combined active and filled */
+    border-color: #ff7043;
+}
+
+.track-volume-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: 10px;
+    min-width: 80px;
+}
+.track-volume-control label {
+    font-size: 0.75em;
+    margin-bottom: 5px;
+}
+.track-volume-control input[type="range"] {
+    width: 100%;
+}
