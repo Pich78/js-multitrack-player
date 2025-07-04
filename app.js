@@ -3,7 +3,7 @@
 let audioContext;
 let player;
 let audioFiles = {}; // Stores decoded AudioBuffers by their simplified name (e.g., 'itotele-open')
-let selectedSoundType = null; // 'open' or 'slap'
+let selectedSoundType = null; // 'open', 'slap', or 'combined'
 
 // Expected file names (without .wav extension)
 const EXPECTED_FILE_NAMES = [
@@ -305,7 +305,7 @@ function renderGrid() {
                 cellElement.classList.add('filled');
                 // Add symbol based on soundTypeInCell
                 const symbolDiv = document.createElement('div');
-                symbolDiv.classList.add('cell-symbol', soundTypeInCell); // Add 'open' or 'slap' class
+                symbolDiv.classList.add('cell-symbol', soundTypeInCell); // Add 'open', 'slap', or 'combined' class
                 cellElement.appendChild(symbolDiv);
             } else {
                 cellElement.textContent = '';
@@ -363,13 +363,28 @@ function updatePlayerGridDataAndRenderUI() {
     // Add audio to player based on currentGridState
     currentGridState.forEach((trackCells, trackId) => {
         trackCells.forEach((soundType, columnIndex) => {
-            const audioKey = `${trackId}-${soundType}`; // e.g., 'okonkolo-open'
-            const audioBuffer = audioFiles[audioKey];
-            if (audioBuffer) {
-                player.addAudioToGrid(trackId, columnIndex, audioBuffer);
+            let audioDataToPass;
+            if (soundType === 'combined') {
+                // For combined sound, pass an array of both open and slap buffers
+                const openBuffer = audioFiles[`${trackId}-open`];
+                const slapBuffer = audioFiles[`${trackId}-slap`];
+                if (openBuffer && slapBuffer) {
+                    audioDataToPass = [openBuffer, slapBuffer];
+                } else {
+                    console.error(`Missing audio buffers for combined sound on ${trackId}.`);
+                    return; // Skip placing this sound if buffers are missing
+                }
             } else {
-                console.warn(`Audio buffer for ${audioKey} not found. Cannot place sound.`);
+                // For 'open' or 'slap', pass the single buffer
+                const singleBuffer = audioFiles[`${trackId}-${soundType}`];
+                if (singleBuffer) {
+                    audioDataToPass = singleBuffer;
+                } else {
+                    console.error(`Missing audio buffer for ${trackId}-${soundType}.`);
+                    return; // Skip placing this sound if buffer is missing
+                }
             }
+            player.addAudioToGrid(trackId, columnIndex, audioDataToPass);
         });
     });
     renderGrid(); // Re-render the UI grid to reflect currentGridState
@@ -521,7 +536,7 @@ ui.soundSymbols.forEach(symbol => {
         if (selectedSoundType === type) {
             // Deselect if already selected
             selectedSoundType = null;
-            symbol.classList.remove('selected');
+            ui.soundSymbols.forEach(s => s.classList.remove('selected')); // Deselect all
         } else {
             // Deselect others and select this one
             ui.soundSymbols.forEach(s => s.classList.remove('selected'));
@@ -559,22 +574,37 @@ function handleGridCellClick(event) {
         } else {
             // Place new symbol (or replace existing different one)
             currentGridState.get(trackId).set(columnIndex, selectedSoundType);
-            const audioKey = `${trackId}-${selectedSoundType}`;
-            const audioBuffer = audioFiles[audioKey];
-            if (audioBuffer) {
-                player.addAudioToGrid(trackId, columnIndex, audioBuffer); // Add to player
-                cell.classList.add('filled');
-                cell.innerHTML = ''; // Clear previous symbol/text
-                const symbolDiv = document.createElement('div');
-                symbolDiv.classList.add('cell-symbol', selectedSoundType);
-                cell.appendChild(symbolDiv);
-                console.log(`Placed ${selectedSoundType} on ${trackId} at column ${columnIndex}`);
+            
+            let audioDataToPass;
+            if (selectedSoundType === 'combined') {
+                const openBuffer = audioFiles[`${trackId}-open`];
+                const slapBuffer = audioFiles[`${trackId}-slap`];
+                if (openBuffer && slapBuffer) {
+                    audioDataToPass = [openBuffer, slapBuffer];
+                } else {
+                    console.error(`Cannot place combined sound: Missing required audio buffers for ${trackId}.`);
+                    return;
+                }
             } else {
-                console.error(`Audio buffer for ${audioKey} not found. Cannot place sound.`);
+                const singleBuffer = audioFiles[`${trackId}-${selectedSoundType}`];
+                if (singleBuffer) {
+                    audioDataToPass = singleBuffer;
+                } else {
+                    console.error(`Cannot place ${selectedSoundType} sound: Missing audio buffer for ${trackId}-${selectedSoundType}.`);
+                    return;
+                }
             }
+
+            player.addAudioToGrid(trackId, columnIndex, audioDataToPass); // Add to player
+            cell.classList.add('filled');
+            cell.innerHTML = ''; // Clear previous symbol/text
+            const symbolDiv = document.createElement('div');
+            symbolDiv.classList.add('cell-symbol', selectedSoundType);
+            cell.appendChild(symbolDiv);
+            console.log(`Placed ${selectedSoundType} on ${trackId} at column ${columnIndex}`);
         }
     } else {
-        console.log("No sound type selected. Click a symbol (circle/triangle) first.");
+        console.log("No sound type selected. Click a symbol (circle/triangle/combined) first.");
     }
 }
 

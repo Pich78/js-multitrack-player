@@ -277,6 +277,24 @@ select {
     background-color: #e0e0e0;
 }
 
+/* New: Combined Sound Symbol */
+.sound-symbol.combined {
+    position: relative; /* For positioning the inner triangle */
+    background-color: #e0e0e0; /* Base color for the circle */
+}
+
+.sound-symbol.combined::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 20px solid #616161; /* Color of the inner triangle */
+    transform: translateY(-2px); /* Adjust vertical position */
+}
+
+
 .sound-symbol:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -309,6 +327,24 @@ select {
     border-radius: 0; /* Override for triangle */
     clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
     background-color: #f44336; /* Red for slap symbols */
+}
+
+/* New: Combined Symbol in Grid Cell */
+.grid-cell .cell-symbol.combined {
+    position: relative;
+    background-color: #673AB7; /* A distinct color for combined, e.g., Deep Purple */
+    border-radius: 50%; /* Ensure it's a circle */
+}
+
+.grid-cell .cell-symbol.combined::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 10px solid white; /* White inner triangle for contrast */
+    transform: translateY(-1px); /* Adjust vertical position */
 }
 
 
@@ -421,21 +457,3 @@ select {
     border-color: #66bb6a;
     color: #388e3c;
 }
-
-/* Removed old track-volume-control styles */
-/*
-.track-volume-control {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-left: 10px;
-    min-width: 80px;
-}
-.track-volume-control label {
-    font-size: 0.75em;
-    margin-bottom: 5px;
-}
-.track-volume-control input[type="range"] {
-    width: 100%;
-}
-*/

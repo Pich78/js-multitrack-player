@@ -12,8 +12,9 @@ class MultiTrackPlayer extends EventTarget {
     masterGainNode;
 
     /**
-     * Stores track data: { gainNode: GainNode, cells: Map<number, AudioBuffer>, _isMuted: boolean, _lastVolume: number }
-     * @type {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer>, _isMuted: boolean, _lastVolume: number }>}
+     * Stores track data: { gainNode: GainNode, cells: Map<number, AudioBuffer|AudioBuffer[]>, _isMuted: boolean, _lastVolume: number }
+     * The 'cells' map can now store either a single AudioBuffer or an array of AudioBuffers for combined sounds.
+     * @type {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer|AudioBuffer[]>, _isMuted: boolean, _lastVolume: number }>}
      */
     _tracks = new Map();
 
@@ -149,20 +150,36 @@ class MultiTrackPlayer extends EventTarget {
             this._tracks.forEach(track => {
                 // Only play if the track is not muted
                 if (!track._isMuted) {
-                    const audioBuffer = track.cells.get(this._currentCellIndex);
-                    if (audioBuffer) {
-                        const source = this.audioContext.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(track.gainNode);
+                    const audioData = track.cells.get(this._currentCellIndex);
+                    if (audioData) {
+                        const playBuffer = (buffer) => {
+                            const source = this.audioContext.createBufferSource();
+                            source.buffer = buffer;
+                            source.connect(track.gainNode);
 
-                        // Store reference to stop it later if needed
-                        this._scheduledSources.add(source);
-                        source.onended = () => {
-                            this._scheduledSources.delete(source);
+                            // Store reference to stop it later if needed
+                            this._scheduledSources.add(source);
+                            source.onended = () => {
+                                this._scheduledSources.delete(source);
+                            };
+                            source.start(this._nextCellTime);
                         };
 
-                        // Schedule the sound
-                        source.start(this._nextCellTime);
+                        if (Array.isArray(audioData)) {
+                            // If it's an array, play all buffers in the array
+                            audioData.forEach(buffer => {
+                                if (buffer instanceof AudioBuffer) {
+                                    playBuffer(buffer);
+                                } else {
+                                    console.warn("Invalid AudioBuffer found in combined audio data array.");
+                                }
+                            });
+                        } else if (audioData instanceof AudioBuffer) {
+                            // If it's a single AudioBuffer, play it
+                            playBuffer(audioData);
+                        } else {
+                            console.warn("Invalid audio data type found in grid cell:", audioData);
+                        }
                     }
                 }
             });
@@ -353,12 +370,13 @@ class MultiTrackPlayer extends EventTarget {
     }
 
     /**
-     * Places an AudioBuffer at a specific grid cell. Can only be called in Stop state.
+     * Places audio data (single AudioBuffer or array of AudioBuffers) at a specific grid cell.
+     * Can only be called in Stop state.
      * @param {string} trackId - The ID of the track.
      * @param {number} columnIndex - The column index (0-based).
-     * @param {AudioBuffer} audioBuffer - The decoded audio buffer.
+     * @param {AudioBuffer|AudioBuffer[]} audioData - The decoded audio buffer(s).
      */
-    addAudioToGrid(trackId, columnIndex, audioBuffer) {
+    addAudioToGrid(trackId, columnIndex, audioData) {
         if (this._isPlaying || this._isPaused) {
             console.warn("Cannot add audio to grid while playing or paused. Please stop the player first.");
             return;
@@ -372,8 +390,8 @@ class MultiTrackPlayer extends EventTarget {
             console.error("Column index must be non-negative.");
             return;
         }
-        track.cells.set(columnIndex, audioBuffer);
-        this.dispatchEvent(new CustomEvent('audioAddedToGrid', { detail: { trackId, columnIndex, audioBuffer } }));
+        track.cells.set(columnIndex, audioData); // Store the audioData directly
+        this.dispatchEvent(new CustomEvent('audioAddedToGrid', { detail: { trackId, columnIndex, audioData } }));
     }
 
     /**
@@ -496,7 +514,7 @@ class MultiTrackPlayer extends EventTarget {
 
     /**
      * Returns the map of tracks and their contents.
-     * @returns {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer>, _isMuted: boolean, _lastVolume: number }>}
+     * @returns {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer|AudioBuffer[]>, _isMuted: boolean, _lastVolume: number }>}
      */
     getTracks() {
         return this._tracks;
