@@ -197,6 +197,9 @@ function initializePlayer() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     player = new MultiTrackPlayer(audioContext);
 
+    // Set BPM slider min value here
+    ui.bpmSlider.min = 30; // Set minimum BPM to 30
+
     // Initial UI updates
     updateUIControls();
 
