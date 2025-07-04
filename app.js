@@ -40,6 +40,9 @@ const instrumentColors = {
     }
 };
 
+// Define the volume multiplier for the slap sound in combined hits
+const SLAP_VOLUME_MULTIPLIER = 3.0;
+
 const ui = {
     audioFileInput: document.getElementById('audio-file-input'),
     chooseFilesBtn: document.getElementById('choose-files-btn'), // New button reference
@@ -365,13 +368,14 @@ function updatePlayerGridDataAndRenderUI() {
         trackCells.forEach((soundType, columnIndex) => {
             let audioDataToPass;
             if (soundType === 'combined') {
-                // For combined sound, pass an array of both open and slap buffers
+                // For combined sound, pass an object with both open and slap buffers
                 const openBuffer = audioFiles[`${trackId}-open`];
                 const slapBuffer = audioFiles[`${trackId}-slap`];
                 if (openBuffer && slapBuffer) {
-                    audioDataToPass = [openBuffer, slapBuffer];
+                    // Pass an object with named properties for clarity in MultiTrackPlayer
+                    audioDataToPass = { open: openBuffer, slap: slapBuffer, slapMultiplier: SLAP_VOLUME_MULTIPLIER };
                 } else {
-                    console.error(`Missing audio buffers for combined sound on ${trackId}.`);
+                    console.error(`Cannot place combined sound: Missing required audio buffers for ${trackId}.`);
                     return; // Skip placing this sound if buffers are missing
                 }
             } else {
@@ -380,7 +384,7 @@ function updatePlayerGridDataAndRenderUI() {
                 if (singleBuffer) {
                     audioDataToPass = singleBuffer;
                 } else {
-                    console.error(`Missing audio buffer for ${trackId}-${soundType}.`);
+                    console.error(`Cannot place ${selectedSoundType} sound: Missing audio buffer for ${trackId}-${selectedSoundType}.`);
                     return; // Skip placing this sound if buffer is missing
                 }
             }
@@ -580,7 +584,8 @@ function handleGridCellClick(event) {
                 const openBuffer = audioFiles[`${trackId}-open`];
                 const slapBuffer = audioFiles[`${trackId}-slap`];
                 if (openBuffer && slapBuffer) {
-                    audioDataToPass = [openBuffer, slapBuffer];
+                    // Pass an object with named properties for clarity in MultiTrackPlayer
+                    audioDataToPass = { open: openBuffer, slap: slapBuffer, slapMultiplier: SLAP_VOLUME_MULTIPLIER };
                 } else {
                     console.error(`Cannot place combined sound: Missing required audio buffers for ${trackId}.`);
                     return;

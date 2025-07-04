@@ -12,9 +12,9 @@ class MultiTrackPlayer extends EventTarget {
     masterGainNode;
 
     /**
-     * Stores track data: { gainNode: GainNode, cells: Map<number, AudioBuffer|AudioBuffer[]>, _isMuted: boolean, _lastVolume: number }
-     * The 'cells' map can now store either a single AudioBuffer or an array of AudioBuffers for combined sounds.
-     * @type {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer|AudioBuffer[]>, _isMuted: boolean, _lastVolume: number }>}
+     * Stores track data: { gainNode: GainNode, cells: Map<number, AudioBuffer|{open: AudioBuffer, slap: AudioBuffer, slapMultiplier?: number}>, _isMuted: boolean, _lastVolume: number }
+     * The 'cells' map can now store either a single AudioBuffer or an object containing 'open' and 'slap' AudioBuffers, plus an optional 'slapMultiplier'.
+     * @type {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer|{open: AudioBuffer, slap: AudioBuffer, slapMultiplier?: number}>, _isMuted: boolean, _lastVolume: number }>}
      */
     _tracks = new Map();
 
@@ -152,31 +152,50 @@ class MultiTrackPlayer extends EventTarget {
                 if (!track._isMuted) {
                     const audioData = track.cells.get(this._currentCellIndex);
                     if (audioData) {
-                        const playBuffer = (buffer) => {
+                        /**
+                         * Helper function to play an AudioBuffer with a given volume multiplier.
+                         * @param {AudioBuffer} buffer The audio buffer to play.
+                         * @param {number} multiplier The volume multiplier (e.g., 1.0 for normal, 1.25 for boosted).
+                         */
+                        const playBuffer = (buffer, multiplier = 1.0) => {
                             const source = this.audioContext.createBufferSource();
                             source.buffer = buffer;
-                            source.connect(track.gainNode);
+
+                            // Create a temporary gain node for this specific source to apply multiplier
+                            const tempGainNode = this.audioContext.createGain();
+                            // Set value at current time to avoid scheduling issues with changes to track.gainNode
+                            tempGainNode.gain.setValueAtTime(multiplier, this.audioContext.currentTime);
+
+                            source.connect(tempGainNode);
+                            tempGainNode.connect(track.gainNode); // Connect to the track's main gain node
 
                             // Store reference to stop it later if needed
                             this._scheduledSources.add(source);
                             source.onended = () => {
                                 this._scheduledSources.delete(source);
+                                tempGainNode.disconnect(); // Disconnect temporary gain node when source ends
                             };
                             source.start(this._nextCellTime);
                         };
 
-                        if (Array.isArray(audioData)) {
-                            // If it's an array, play all buffers in the array
-                            audioData.forEach(buffer => {
-                                if (buffer instanceof AudioBuffer) {
-                                    playBuffer(buffer);
-                                } else {
-                                    console.warn("Invalid AudioBuffer found in combined audio data array.");
-                                }
-                            });
+                        // Check if audioData is an object (for combined sounds) or a single AudioBuffer
+                        if (typeof audioData === 'object' && audioData !== null && audioData.open && audioData.slap) {
+                            // Combined sound: play open at normal volume, slap with specified multiplier
+                            const slapMultiplier = audioData.slapMultiplier !== undefined ? audioData.slapMultiplier : 1.0;
+
+                            if (audioData.open instanceof AudioBuffer) {
+                                playBuffer(audioData.open, 1.0); // Open sound at normal volume
+                            } else {
+                                console.warn("Invalid 'open' AudioBuffer found in combined audio data.");
+                            }
+                            if (audioData.slap instanceof AudioBuffer) {
+                                playBuffer(audioData.slap, slapMultiplier); // Slap sound at specified multiplier
+                            } else {
+                                console.warn("Invalid 'slap' AudioBuffer found in combined audio data.");
+                            }
                         } else if (audioData instanceof AudioBuffer) {
-                            // If it's a single AudioBuffer, play it
-                            playBuffer(audioData);
+                            // Single sound: play at normal volume
+                            playBuffer(audioData, 1.0);
                         } else {
                             console.warn("Invalid audio data type found in grid cell:", audioData);
                         }
@@ -370,11 +389,11 @@ class MultiTrackPlayer extends EventTarget {
     }
 
     /**
-     * Places audio data (single AudioBuffer or array of AudioBuffers) at a specific grid cell.
+     * Places audio data (single AudioBuffer or object with open/slap AudioBuffers and optional slapMultiplier) at a specific grid cell.
      * Can only be called in Stop state.
      * @param {string} trackId - The ID of the track.
      * @param {number} columnIndex - The column index (0-based).
-     * @param {AudioBuffer|AudioBuffer[]} audioData - The decoded audio buffer(s).
+     * @param {AudioBuffer|{open: AudioBuffer, slap: AudioBuffer, slapMultiplier?: number}} audioData - The decoded audio buffer(s) and optional multiplier.
      */
     addAudioToGrid(trackId, columnIndex, audioData) {
         if (this._isPlaying || this._isPaused) {
@@ -514,7 +533,7 @@ class MultiTrackPlayer extends EventTarget {
 
     /**
      * Returns the map of tracks and their contents.
-     * @returns {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer|AudioBuffer[]>, _isMuted: boolean, _lastVolume: number }>}
+     * @returns {Map<string, { gainNode: GainNode, cells: Map<number, AudioBuffer|{open: AudioBuffer, slap: AudioBuffer, slapMultiplier?: number}>, _isMuted: boolean, _lastVolume: number }>}
      */
     getTracks() {
         return this._tracks;
