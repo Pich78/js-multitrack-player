@@ -118,6 +118,16 @@ function renderGrid() {
 
     const numberOfColumns = player._getMaxColumns(); // Get calculated columns from player
 
+    // Calculate cells per beat for visual markers
+    let cellsPerBeat = 1; // Default to 1 to avoid division by zero or invalid values
+    if (timeDenominator > 0 && subdivisionNoteValue > 0) {
+        cellsPerBeat = subdivisionNoteValue / timeDenominator;
+        // Ensure cellsPerBeat is an integer, if not, it means the subdivision doesn't align perfectly with the beat
+        // For visual purposes, we might want to round or handle this, but for now, keep it precise.
+        // If it's not an integer, the modulo check below will still work, but visually might be less intuitive.
+    }
+
+
     // Initialize currentGridState for new grid dimensions
     // Preserve existing placements if the grid size allows
     const newGridState = new Map();
@@ -152,6 +162,11 @@ function renderGrid() {
             cellElement.classList.add('grid-cell');
             cellElement.dataset.trackId = trackId;
             cellElement.dataset.columnIndex = i;
+
+            // Add beat-marker class for visual separators
+            if (cellsPerBeat > 0 && i % cellsPerBeat === 0) {
+                cellElement.classList.add('beat-marker');
+            }
 
             const soundTypeInCell = currentGridState.get(trackId)?.get(i);
             if (soundTypeInCell) {

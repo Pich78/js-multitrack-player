@@ -303,7 +303,7 @@ select {
     display: flex; /* Ensure flex container properties */
     align-items: center; /* Center content vertically */
     justify-content: center; /* Center content horizontally */
-    /* border: 1px solid black; /* TEMPORARY: For debugging visibility */
+    /* Removed temporary border: border: 1px solid black; */
 }
 
 .grid-cell .cell-symbol.slap {
@@ -325,8 +325,6 @@ select {
 
 .grid-row {
     display: grid;
-    grid-auto-flow: column; /* Cells flow horizontally */
-    grid-auto-columns: minmax(50px, 1fr); /* Each cell is at least 50px, then expands */
     gap: 5px;
     min-width: fit-content; /* Ensure row takes minimum content width */
 }
@@ -367,10 +365,24 @@ select {
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
+/* Style for beat markers */
+.grid-cell.beat-marker {
+    border-left: 2px solid #757575; /* Thicker border for beat start */
+}
+
+
 .grid-cell.active {
-    background-color: #ffccbc; /* Light orange for active cell */
-    border-color: #ff8a65;
-    box-shadow: 0 0 5px #ff8a65;
+    /* Made background more distinct for visibility */
+    background-color: #ff8a65; /* A more vibrant orange */
+    border-color: #ff5722;
+    box-shadow: 0 0 8px #ff5722; /* Stronger shadow */
+}
+
+/* Ensure active state is visible even when combined with filled */
+.grid-cell.active.filled {
+    background-color: #ff7043; /* A slightly different, but still vibrant orange */
+    border-color: #e64a19;
+    box-shadow: 0 0 8px #e64a19;
 }
 
 .grid-cell.filled {
@@ -379,10 +391,6 @@ select {
     color: #388e3c;
 }
 
-.grid-cell.active.filled {
-    background-color: #ffab91; /* Combined active and filled */
-    border-color: #ff7043;
-}
 
 .track-volume-control {
     display: flex;
