@@ -123,16 +123,7 @@ class MultiTrackPlayer extends EventTarget {
 
         // Schedule notes in the look-ahead window
         while (this._nextCellTime < currentTime + this._lookAheadTime) {
-            if (this._currentCellIndex >= 0) { // Only dispatch if we've started playing
-                this.dispatchEvent(new CustomEvent('gridCellChanged', {
-                    detail: {
-                        columnIndex: this._currentCellIndex,
-                        time: this._nextCellTime - cellDuration // Time when this cell actually started
-                    }
-                }));
-            }
-
-            // Move to the next cell
+            // Move to the next cell BEFORE dispatching and scheduling
             this._currentCellIndex++;
             if (maxColumns > 0 && this._currentCellIndex >= maxColumns) {
                 if (this._loop) {
@@ -143,6 +134,18 @@ class MultiTrackPlayer extends EventTarget {
                     return;
                 }
             }
+
+            // --- ADDED THIS LOG ---
+            console.log(`MultiTrackPlayer: Scheduling cell ${this._currentCellIndex} for time ${this._nextCellTime.toFixed(3)}`);
+            // --- END ADDITION ---
+
+            // Dispatch event for the *current* cell being scheduled
+            this.dispatchEvent(new CustomEvent('gridCellChanged', {
+                detail: {
+                    columnIndex: this._currentCellIndex,
+                    time: this._nextCellTime // Time when this cell actually starts
+                }
+            }));
 
             // Schedule sounds for the current cell
             this._tracks.forEach(track => {

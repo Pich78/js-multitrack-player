@@ -249,11 +249,36 @@ function initializePlayer() {
     updateUIControls();
 
     console.log('MultiTrackPlayer initialized. Grid rendered. Waiting for audio files.');
+
+    // Event Listeners for Player - THIS IS THE FOCUS AREA
+    player.addEventListener('gridCellChanged', (e) => {
+        console.log('gridCellChanged event RECEIVED in app.js!', e.detail.columnIndex); // NEW LOG HERE
+        const { columnIndex } = e.detail;
+        updateActiveCellUI(columnIndex);
+    });
+    player.addEventListener('stop', () => {
+        updateActiveCellUI(-1); // Clear active cell
+        updateUIControls();
+    });
+    player.addEventListener('play', () => updateUIControls());
+    player.addEventListener('pause', () => updateUIControls());
+    player.addEventListener('bpmChanged', (e) => {
+        ui.bpmValue.textContent = e.detail.bpm;
+        ui.bpmSlider.value = e.detail.bpm;
+        updateUIControls();
+    });
+    player.addEventListener('masterVolumeChanged', (e) => {
+        ui.masterVolumeValue.textContent = `${Math.round(e.detail.volume * 100)}%`;
+        ui.masterVolumeSlider.value = Math.round(e.detail.volume * 100);
+    });
+    player.addEventListener('loopingChanged', (e) => {
+        ui.loopToggle.checked = e.detail.loop;
+    });
 }
 
 // --- UI Interaction and Updates ---
 function updateActiveCellUI(newColumnIndex) {
-    // console.log(`updateActiveCellUI called with index: ${newColumnIndex}`); // Debugging log
+    console.log(`updateActiveCellUI called with index: ${newColumnIndex}`); // Debugging log
     // Remove 'active' class from all cells
     document.querySelectorAll('.grid-cell.active').forEach(cell => {
         cell.classList.remove('active');
@@ -262,7 +287,7 @@ function updateActiveCellUI(newColumnIndex) {
     if (newColumnIndex >= 0) {
         // Add 'active' class to cells in the new active column
         const cellsToHighlight = document.querySelectorAll(`.grid-cell[data-column-index="${newColumnIndex}"]`);
-        // console.log(`Found ${cellsToHighlight.length} cells for column ${newColumnIndex}`); // Debugging log
+        console.log(`Found ${cellsToHighlight.length} cells for column ${newColumnIndex}`); // Debugging log
         cellsToHighlight.forEach(cell => {
             cell.classList.add('active');
         });
